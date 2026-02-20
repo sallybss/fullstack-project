@@ -1,24 +1,34 @@
-import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import { createApp } from 'vue'
+import App from './App.vue'
+import router from './router'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+import PrimeVue from 'primevue/config'
+import 'primeicons/primeicons.css'
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+// Import theme preset
+import Aura from '@primevue/themes/aura'
+import { definePreset } from '@primevue/themes'
+
+const app = createApp(App)
+
+// Define custom preset
+const MyPreset = definePreset(Aura, {
+  semantic: {
+    primary: {
+      500: '#ff6b35'
+    }
+  }
+})
+
+app.use(PrimeVue, {
+  theme: {
+    preset: MyPreset,
+    options: {
+      darkModeSelector: false
+    }
+  }
+})
+
+app.use(router)
+
+app.mount('#app')
