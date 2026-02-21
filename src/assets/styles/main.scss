@@ -1,10 +1,17 @@
 :root {
-  --primary: #ff6b35;
-  --bg: #f6f3f2;
+  --accent: #ff724c;
+  --text: #ffffff;
+  --muted: rgba(255, 255, 255, 0.75);
+  --stroke: rgba(255, 255, 255, 0.25);
 }
+
+* { box-sizing: border-box; }
 
 body {
   margin: 0;
-  font-family: system-ui, Arial, sans-serif;
-  background: var(--bg);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0.5px;
+  -webkit-font-smoothing: antialiased;
 }
