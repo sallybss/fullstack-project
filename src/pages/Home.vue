@@ -41,21 +41,18 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-// 🔹 common
+
 import AppHeader from '../components/common/AppHeader.vue'
 import AppFooter from '../components/common/AppFooter.vue'
 import PaginationBar from '../components/common/PaginationBar.vue'
 
-// 🔹 home-specific
 import HeroSearch from '../components/home/HeroSearch.vue'
 import CategoryChips from '../components/home/CategoryChips.vue'
 import SortSelect from '../components/home/SortSelect.vue'
 
-// 🔹 recipe domain
 import RecipeGrid from '../components/recipes/RecipeGrid.vue'
 import RecipeCard from '../components/recipes/RecipeCard.vue'
 
-// 🔹 data + types
 import { mockRecipes } from '../data/mockRecipes'
 import type { Recipe } from '../types/recipe'
 
