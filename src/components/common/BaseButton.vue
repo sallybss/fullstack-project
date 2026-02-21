@@ -46,12 +46,13 @@ defineProps({
 /* OUTLINE */
 .btn--outline {
   background: transparent;
-  border: 1px solid var(--accent);
   color: var(--accent);
+  border: 1px solid var(--accent);
 }
 
 .btn--outline:hover {
-  background: rgba(255, 114, 76, 0.1);
+  background: var(--accent);
+  color: white;
 }
 
 /* GHOST */
