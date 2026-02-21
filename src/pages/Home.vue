@@ -41,7 +41,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-
 import AppHeader from '../components/common/AppHeader.vue'
 import AppFooter from '../components/common/AppFooter.vue'
 import PaginationBar from '../components/common/PaginationBar.vue'
@@ -56,20 +55,40 @@ import RecipeCard from '../components/recipes/RecipeCard.vue'
 import { mockRecipes } from '../data/mockRecipes'
 import type { Recipe } from '../types/recipe'
 
+//Generates mockup recipies, for mockup
+function buildDemoRecipes(times = 10): Recipe[] {
+  const result: Recipe[] = []
+
+  for (let t = 0; t < times; t++) {
+    for (const r of mockRecipes) {
+      result.push({
+        ...r,
+        id: `${r.id}-${t}`,                
+        title: `${r.title} ${t + 1}`,      
+        createdAt: r.createdAt - t * 86400000 
+      })
+    }
+  }
+
+  return result
+}
+
+const recipes = ref<Recipe[]>(buildDemoRecipes(10)) // 10x mockRecipes
+
 const query = ref('')
 const selectedCategory = ref<string>('Desserts')
 const sortBy = ref<'newest' | 'rating' | 'time'>('newest')
 
 const page = ref(1)
-const pageSize = 8
+const pageSize = 12
 
 const categories = ['Desserts', 'Meat', 'Vegan', 'Vegetarian']
 
 const filteredRecipes = computed(() => {
   const q = query.value.trim().toLowerCase()
 
-  return mockRecipes
-    .filter(r => selectedCategory.value ? r.category === selectedCategory.value : true)
+  return recipes.value
+    .filter(r => (selectedCategory.value ? r.category === selectedCategory.value : true))
     .filter(r => (q ? r.title.toLowerCase().includes(q) : true))
     .slice()
     .sort((a, b) => {
@@ -79,8 +98,9 @@ const filteredRecipes = computed(() => {
     })
 })
 
-// reset to page 1 whenever user changes filters/search/sort
-watch([query, selectedCategory, sortBy], () => { page.value = 1 })
+watch([query, selectedCategory, sortBy], () => {
+  page.value = 1
+})
 
 const pagedRecipes = computed(() => {
   const start = (page.value - 1) * pageSize
@@ -88,12 +108,11 @@ const pagedRecipes = computed(() => {
 })
 
 function toggleSave(id: string) {
-  const recipe = mockRecipes.find(r => r.id === id)
+  const recipe = recipes.value.find(r => r.id === id)
   if (recipe) recipe.saved = !recipe.saved
 }
 
 function viewRecipe(recipe: Recipe) {
-  // later: router push to /recipes/:id
   console.log('view', recipe.id)
 }
 </script>
