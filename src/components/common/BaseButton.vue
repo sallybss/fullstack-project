@@ -30,7 +30,6 @@ defineProps({
   letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s ease;
-  margin-top: 25px;
 }
 
 /* PRIMARY */
