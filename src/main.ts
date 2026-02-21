@@ -6,30 +6,19 @@ import './assets/styles/main.scss'
 import PrimeVue from 'primevue/config'
 import 'primeicons/primeicons.css'
 
-// Import theme preset
 import Aura from '@primevue/themes/aura'
-import { definePreset } from '@primevue/themes'
 
 const app = createApp(App)
 
-// Define custom preset
-const MyPreset = definePreset(Aura, {
-  semantic: {
-    primary: {
-      500: '#ff6b35'
-    }
-  }
-})
+app.use(router)
 
 app.use(PrimeVue, {
   theme: {
-    preset: MyPreset,
+    preset: Aura,
     options: {
-      darkModeSelector: false
+      darkModeSelector: 'none' 
     }
   }
 })
-
-app.use(router)
 
 app.mount('#app')
