@@ -1,7 +1,7 @@
 <template>
   <article class="card">
     <div class="card__imageWrap">
-      <img class="card__image" :src="recipe.image" :alt="recipe.title" />
+      <img class="card__image" :src="recipe.imageUrl" :alt="recipe.title" />
     </div>
 
     <div class="card__meta">
@@ -23,8 +23,7 @@
     <h3 class="card__title">{{ recipe.title }}</h3>
 
     <div class="card__actions">
-      <BaseButton variant="outline" class="card__view" type="button" @click="$emit('view', recipe)">View</BaseButton>
-
+      <BaseButton variant="outline" class="card__view" type="button" @click="goToRecipe">View</BaseButton>
       <button
         class="saveBtn"
         type="button"
@@ -41,12 +40,19 @@
 <script setup lang="ts">
 import type { Recipe } from '../../types/recipe'
 import BaseButton from '../common/BaseButton.vue'
+import { useRouter } from 'vue-router'
 
-defineProps<{ recipe: Recipe }>()
+const router = useRouter()
+
+const props = defineProps<{ recipe: Recipe }>()
+
+function goToRecipe() {
+  const cleanId = String(props.recipe.id).split('-')[0]
+  router.push({ name: 'recipe', params: { id: cleanId } })
+}
 
 defineEmits<{
   (e: 'toggle-save', id: string): void
-  (e: 'view', recipe: Recipe): void
 }>()
 </script>
 

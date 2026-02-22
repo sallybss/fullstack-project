@@ -17,12 +17,11 @@
 
         <RecipeGrid>
           <RecipeCard
-            v-for="r in pagedRecipes"
-            :key="r.id"
-            :recipe="r"
-            @toggle-save="toggleSave"
-            @view="viewRecipe"
-          />
+  v-for="recipe in pagedRecipes"
+  :key="recipe.id"
+  :recipe="recipe"
+  @toggle-save="toggleSave"
+/>
         </RecipeGrid>
 
         <PaginationBar

@@ -1,8 +1,11 @@
-import type { Recipe } from './mockRecipes'
+//Here are fake data until the API is ready
+
+import type { Recipe } from '../types/recipe'
 
 export const mockRecipes: Recipe[] = [
   {
     id: '1',
+    baseId: '1',
     title: 'Recipe title',
     category: 'Desserts',
     timeMinutes: 30,
@@ -14,6 +17,7 @@ export const mockRecipes: Recipe[] = [
   },
   {
     id: '2',
+    baseId: '2',
     title: 'Recipe title',
     category: 'Desserts',
     timeMinutes: 30,
@@ -23,5 +27,4 @@ export const mockRecipes: Recipe[] = [
     saved: true,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 10,
   },
-  // duplicate a few more with different seeds/categories...
 ]
