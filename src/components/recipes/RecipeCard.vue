@@ -57,9 +57,16 @@ defineEmits<{
 </script>
 
 <style scoped lang="scss">
+.section {
+  margin-top: 22px;
+  padding-bottom: 24px;
+}
+
 .card {
   display: grid;
   gap: 10px;
+  width: 100%;
+  max-width: none;
 }
 
 .card__imageWrap {
