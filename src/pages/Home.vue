@@ -1,9 +1,10 @@
 <template>
   <div class="page">
-    <AppHeader />
 
     <main class="page__main">
-      <HeroSearch v-model="query" />
+      <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700">
+  <HeroSearch v-model="query" />
+</HeroSection>
 
       <section class="section">
         <div class="section__top">
@@ -17,12 +18,11 @@
 
         <RecipeGrid>
           <RecipeCard
-            v-for="r in pagedRecipes"
-            :key="r.id"
-            :recipe="r"
-            @toggle-save="toggleSave"
-            @view="viewRecipe"
-          />
+  v-for="recipe in pagedRecipes"
+  :key="recipe.id"
+  :recipe="recipe"
+  @toggle-save="toggleSave"
+/>
         </RecipeGrid>
 
         <PaginationBar
@@ -34,18 +34,16 @@
       </section>
     </main>
 
-    <AppFooter />
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 
-import AppHeader from '../components/common/AppHeader.vue'
-import AppFooter from '../components/common/AppFooter.vue'
 import PaginationBar from '../components/common/PaginationBar.vue'
 
 import HeroSearch from '../components/home/HeroSearch.vue'
+import HeroSection from '../components/common/HeroSection.vue'
 import CategoryChips from '../components/home/CategoryChips.vue'
 import SortSelect from '../components/home/SortSelect.vue'
 
@@ -54,6 +52,7 @@ import RecipeCard from '../components/recipes/RecipeCard.vue'
 
 import { mockRecipes } from '../data/mockRecipes'
 import type { Recipe } from '../types/recipe'
+import type { RecipeCategory } from '../types/recipe'
 
 //Generates mockup recipies, for mockup
 function buildDemoRecipes(times = 10): Recipe[] {
@@ -73,16 +72,21 @@ function buildDemoRecipes(times = 10): Recipe[] {
   return result
 }
 
-const recipes = ref<Recipe[]>(buildDemoRecipes(10)) // 10x mockRecipes
+const recipes = ref<Recipe[]>(buildDemoRecipes(10))
 
 const query = ref('')
-const selectedCategory = ref<string>('Desserts')
+const selectedCategory = ref<RecipeCategory>('Desserts')
 const sortBy = ref<'newest' | 'rating' | 'time'>('newest')
 
 const page = ref(1)
 const pageSize = 12
 
-const categories = ['Desserts', 'Meat', 'Vegan', 'Vegetarian']
+const categories: RecipeCategory[] = [
+  'Desserts',
+  'Meat',
+  'Vegan',
+  'Vegetarian'
+]
 
 const filteredRecipes = computed(() => {
   const q = query.value.trim().toLowerCase()
@@ -112,9 +116,6 @@ function toggleSave(id: string) {
   if (recipe) recipe.saved = !recipe.saved
 }
 
-function viewRecipe(recipe: Recipe) {
-  console.log('view', recipe.id)
-}
 </script>
 
 <style scoped lang="scss">

@@ -1,7 +1,9 @@
-export type RecipeCategory = 'Desserts' | 'Meat' | 'Vegan' | 'Vegetarian'
 
+export type RecipeCategory = 'Desserts' | 'Meat' | 'Vegan' | 'Vegetarian'
+//Defines the fields a recipe must have
 export interface Recipe {
   id: string
+  baseId: string
   title: string
   category: RecipeCategory
   timeMinutes: number
