@@ -9,12 +9,11 @@
       </div>
 
       <template v-else>
-        <RecipeDetails
-          :recipe="recipe"
-          description-text="[short recipe description...]"
-          @back="goBack"
-        />
-
+<RecipeDetails
+  :recipe="recipe"
+  @back="goBack"
+  @toggle-save="toggleSave"
+/>
         <section class="section">
           <h2>Comments</h2>
           <div class="box">[Comment editor]</div>
@@ -38,49 +37,62 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRoute, useRouter } from "vue-router";
-import { mockRecipes } from "../data/mockRecipes";
-import RecipeDetails from "../components/recipes/RecipeDetails.vue";
-import HeroSection from "../components/common/HeroSection.vue";
-import RecipeCard from "../components/recipes/RecipeCard.vue";
-import type { Recipe } from "../types/recipe";
+import { computed, ref } from "vue"
+import { useRoute, useRouter } from "vue-router"
 
+import { mockRecipes } from "../data/mockRecipes"
+import type { Recipe } from "../types/recipe"
+
+import RecipeDetails from "../components/recipes/RecipeDetails.vue"
+import HeroSection from "../components/common/HeroSection.vue"
+import RecipeCard from "../components/recipes/RecipeCard.vue"
+
+/**
+ * Helpers
+ * Build fake recipes until API is ready
+ */
 function buildDemoRecipes(times = 10): Recipe[] {
-  const result: Recipe[] = [];
+  const result: Recipe[] = []
 
   for (let t = 0; t < times; t++) {
     for (const r of mockRecipes) {
       result.push({
         ...r,
-        id: `${r.id}-${t}`,
-        title: `${r.title} ${t + 1}`,
+        id: `${r.id}-${t}`,               
+        title: `${r.title} ${t + 1}`,    
         createdAt: r.createdAt - t * 86400000,
-      });
+      })
     }
   }
 
-  return result;
+  return result
 }
 
-const allRecipes = buildDemoRecipes(10);
+const allRecipes = ref<Recipe[]>(buildDemoRecipes(10))
 
-const route = useRoute();
-const router = useRouter();
+const route = useRoute()
+const router = useRouter()
 
 function goBack() {
-  router.back();
+  router.back()
 }
 
-const recipeId = computed(() => String(route.params.id));
+const recipeId = computed(() => String(route.params.id))
 
-const recipe = computed(() => {
-  return allRecipes.find((r) => r.id.startsWith(recipeId.value));
-});
+const recipe = computed(() =>
+  allRecipes.value.find((r) => r.id.startsWith(recipeId.value))
+)
 
-const otherRecipes = computed(() => {
-  return allRecipes.filter((r) => !r.id.startsWith(recipeId.value)).slice(0, 4);
-});
+const otherRecipes = computed(() =>
+  allRecipes.value
+    .filter((r) => !r.id.startsWith(recipeId.value))
+    .slice(0, 4)
+)
+
+function toggleSave(id: string) {
+  const r = allRecipes.value.find((x) => x.id === id)
+  if (r) r.saved = !r.saved
+}
 </script>
 
 <style scoped>
