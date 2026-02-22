@@ -12,4 +12,16 @@ export interface Recipe {
   imageUrl: string
   saved: boolean
   createdAt: number
+  
+  servings?: number
+  description?: string
+  author?: RecipeAuthor
+  ingredients?: string[]
+  instructions?: string[]
+}
+
+export type RecipeAuthor = {
+  name: string
+  email: string
+  initials: string
 }
