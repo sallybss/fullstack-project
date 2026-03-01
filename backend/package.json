@@ -6,30 +6,30 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "start-dev": "npx nodemon",
+    "start-dev": "nodemon",
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "nodemonConfig": {
-    "verbose": false,
-    "watch": [
-      "src"
-    ],
-    "ext": "js,ts",
-    "exec": "npx ts-node ./src/index.ts",
+    "verbose": true,
+    "watch": ["src"],
+    "ext": "ts,js,json",
+    "exec": "ts-node --transpile-only ./src/index.ts",
     "ignore": [
-      "node_modules"
-    ]
+      "node_modules",
+      "dist",
+      ".git",
+      "*.log",
+      "**/*.tsbuildinfo",
+      "**/.cache/**"
+    ],
+    "delay": "200"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sallybss/fullstack-project.git"
   },
-  "keywords": [
-    "fullstack",
-    "api",
-    "project"
-  ],
+  "keywords": ["fullstack", "api", "project"],
   "author": "sallybss",
   "license": "ISC",
   "bugs": {

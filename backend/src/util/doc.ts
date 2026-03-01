@@ -4,8 +4,6 @@ import type { Application } from "express";
 import path from "path";
 
 export function setupDocs(app: Application) {
-  const isProd = process.env.NODE_ENV === "production";
-
   const swaggerDefinition = {
     openapi: "3.0.0",
     info: {
@@ -16,11 +14,15 @@ export function setupDocs(app: Application) {
     },
     servers: [
       {
-        url: isProd
-          ? "https://your-recipe-api.onrender.com/api"
-          : "http://localhost:4000/api",
-        description: isProd ? "Production server" : "Local development server",
+        url: "http://localhost:4000/api",
+        description: "Local development server",
       },
+
+      // When deploy later (e.g. Render), replace with:
+      // {
+      //   url: "https://your-recipe-api.onrender.com/api",
+      //   description: "Production server"
+      // }
     ],
     components: {
       securitySchemes: {
@@ -67,11 +69,7 @@ export function setupDocs(app: Application) {
 
   const options = {
     swaggerDefinition,
-    apis: [
-      isProd
-        ? path.join(process.cwd(), "dist", "**", "*.js")
-        : path.join(process.cwd(), "src", "**", "*.ts"),
-    ],
+    apis: [path.join(process.cwd(), "src", "**", "*.ts")],
   };
 
   const swaggerSpec = swaggerJSDoc(options);

@@ -3,7 +3,6 @@ import Joi, { type ValidationResult } from "joi";
 
 import { userModel } from "../models/userModel";
 import { type IUser } from "../interfaces/user";
-import { connect, disconnect } from "../repository/database";
 
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -12,8 +11,6 @@ export async function registerUser(req: Request, res: Response) {
   try {
     const { error } = validateUserRegistrationInfo(req.body);
     if (error) return res.status(400).json({ error: error.details[0]?.message });
-
-    await connect();
 
     const emailExists = await userModel.findOne({ email: req.body.email });
     if (emailExists) return res.status(400).json({ error: "Email already exists." });
@@ -32,8 +29,6 @@ export async function registerUser(req: Request, res: Response) {
     return res.status(201).json({ error: null, data: { userId: savedUser._id } });
   } catch (error) {
     return res.status(500).send("Error registering user. Error: " + error);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -41,8 +36,6 @@ export async function loginUser(req: Request, res: Response) {
   try {
     const { error } = validateUserLoginInfo(req.body);
     if (error) return res.status(400).json({ error: error.details[0]?.message });
-
-    await connect();
 
     const user: IUser | null = await userModel.findOne({ email: req.body.email });
     if (!user) return res.status(400).json({ error: "Password or email is wrong." });
@@ -58,7 +51,7 @@ export async function loginUser(req: Request, res: Response) {
     const token = jwt.sign(
       { id: userId, username: user.username, email: user.email },
       TOKEN_SECRET,
-      { expiresIn: "2h" }
+      { expiresIn: "100d" } //longer period only for the sake of the peoject, we know this is less secure :)
     );
 
     return res
@@ -67,8 +60,6 @@ export async function loginUser(req: Request, res: Response) {
       .json({ error: null, data: { userId, token } });
   } catch (error) {
     return res.status(500).send("Error logging in user. Error: " + error);
-  } finally {
-    await disconnect();
   }
 }
 

@@ -1,7 +1,6 @@
 import { type Request, type Response } from "express";
 import { recipeModel } from "../models/recipeModel";
 import { userModel } from "../models/userModel";
-import { connect, disconnect } from "../repository/database";
 
 function isValidUrl(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -65,8 +64,6 @@ function getAuthUserId(req: Request): string | null {
 
 export async function createRecipe(req: Request, res: Response): Promise<void> {
   try {
-    await connect();
-
     const data = pickRecipeBody(req.body);
     if (!data.owner) {
       const authUserId = getAuthUserId(req);
@@ -85,15 +82,11 @@ export async function createRecipe(req: Request, res: Response): Promise<void> {
       msg.includes("cookTimeMinutes") ||
       msg.includes("servings");
     res.status(isValidationError ? 400 : 500).send(msg);
-  } finally {
-    await disconnect();
   }
 }
 
 export async function getAllRecipes(req: Request, res: Response) {
   try {
-    await connect();
-
     const { title, cuisine, owner, isPublic, maxPrepTime } = req.query;
     const filter: any = {};
 
@@ -111,23 +104,17 @@ export async function getAllRecipes(req: Request, res: Response) {
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error retrieving recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
 export async function getRecipeById(req: Request, res: Response) {
   try {
-    await connect();
-
     const id = req.params.id;
     const result = await recipeModel.findById(id);
 
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error retrieving recipe by id. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -136,8 +123,6 @@ export async function getRecipesByQuery(req: Request, res: Response) {
   const value = req.params.value;
 
   try {
-    await connect();
-
     const result = await recipeModel.find({
       [field]: { $regex: value, $options: "i" },
     } as any);
@@ -145,8 +130,6 @@ export async function getRecipesByQuery(req: Request, res: Response) {
     res.status(200).send(result);
   } catch (err) {
     res.status(500).send("Error retrieving recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -154,8 +137,6 @@ export async function updateRecipeById(req: Request, res: Response) {
   const id = req.params.id;
 
   try {
-    await connect();
-
     const update = pickRecipeBody(req.body);
     const result = await recipeModel.findByIdAndUpdate(id, update, { new: true });
 
@@ -169,8 +150,6 @@ export async function updateRecipeById(req: Request, res: Response) {
       msg.includes("cookTimeMinutes") ||
       msg.includes("servings");
     res.status(isValidationError ? 400 : 500).send(msg);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -178,23 +157,17 @@ export async function deleteRecipeById(req: Request, res: Response) {
   const id = req.params.id;
 
   try {
-    await connect();
-
     const result = await recipeModel.findByIdAndDelete(id);
 
     if (!result) res.status(404).send("Cannot delete recipe with id=" + id);
     else res.status(200).send("Recipe was successfully deleted.");
   } catch (err) {
     res.status(500).send("Error deleting recipe by id. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
 export async function getFavoriteRecipeIds(req: Request, res: Response) {
   try {
-    await connect();
-
     const userId = getAuthUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -213,15 +186,11 @@ export async function getFavoriteRecipeIds(req: Request, res: Response) {
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
     res.status(500).send("Error retrieving favorite recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
 export async function getFavoriteRecipes(req: Request, res: Response) {
   try {
-    await connect();
-
     const userId = getAuthUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -240,15 +209,11 @@ export async function getFavoriteRecipes(req: Request, res: Response) {
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
     res.status(500).send("Error retrieving favorite recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
 export async function addFavoriteRecipe(req: Request, res: Response) {
   try {
-    await connect();
-
     const userId = getAuthUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -277,15 +242,11 @@ export async function addFavoriteRecipe(req: Request, res: Response) {
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
     res.status(500).send("Error adding favorite recipe. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
 export async function removeFavoriteRecipe(req: Request, res: Response) {
   try {
-    await connect();
-
     const userId = getAuthUserId(req);
     if (!userId) {
       res.status(401).json({ error: "Unauthorized" });
@@ -308,7 +269,5 @@ export async function removeFavoriteRecipe(req: Request, res: Response) {
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
     res.status(500).send("Error removing favorite recipe. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
