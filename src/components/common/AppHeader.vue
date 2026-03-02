@@ -27,7 +27,12 @@
           <i class="pi pi-bookmark"></i>
         </button>
 
-        <button class="iconBtn" type="button" aria-label="Profile">
+        <button
+          class="iconBtn"
+          type="button"
+          aria-label="Profile"
+          @click="$router.push('/me')"
+        >
           <i class="pi pi-user"></i>
         </button>
 

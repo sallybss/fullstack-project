@@ -5,6 +5,7 @@ import SignUp from '../pages/SignUp.vue'
 import RecipeView from '../pages/RecipeView.vue'
 import AddRecipe from "../pages/AddRecipe.vue"
 
+
 const routes = [
   { path: '/', component: Home },
   { path: '/signin', component: SignIn, meta: { hideLayout: true }},
@@ -12,6 +13,8 @@ const routes = [
   //(dynamic id, when user clicks recipe1 in the Url is /recipes/1)
   { path: '/recipes/:id', name: 'recipe', component: RecipeView },
   { path: "/add-recipe", name: "add-recipe", component: AddRecipe },
+  { path: "/profile/:id", name: "profile", component: () => import("../pages/ProfileView.vue")},
+  { path: "/me", name: "my-profile", component: () => import("../pages/MyProfileView.vue")},
 ]
 
 const router = createRouter({

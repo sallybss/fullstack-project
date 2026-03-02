@@ -21,6 +21,7 @@ export interface Recipe {
 }
 
 export type RecipeAuthor = {
+  id: string; 
   name: string
   email: string
   initials: string

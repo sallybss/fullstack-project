@@ -21,9 +21,14 @@
       </div>
 
       <div class="actions">
-        <BaseButton variant="outline" class="actionBtn"
-          >View profile</BaseButton
+        <BaseButton
+          variant="outline"
+          class="actionBtn"
+          type="button"
+          @click="goToProfile"
         >
+          View profile
+        </BaseButton>
         <BaseButton variant="primary" class="actionBtn">Follow</BaseButton>
       </div>
     </div>
@@ -107,14 +112,19 @@
 <script setup lang="ts">
 import Avatar from "primevue/avatar";
 import Rating from "primevue/rating";
+import { useRouter } from "vue-router";
 import type { Recipe } from "../../types/recipe";
 import BaseButton from "../common/BaseButton.vue";
 
-defineProps<{ recipe: Recipe }>();
-defineEmits<{
-  (e: "back"): void;
-  (e: "toggle-save", id: string): void;
-}>();
+const props = defineProps<{ recipe: Recipe }>();
+
+function goToProfile() {
+  const id = props.recipe.author?.id;
+  if (!id) return;
+  router.push(`/profile/${id}`);
+}
+
+const router = useRouter();
 </script>
 
 <style scoped>
