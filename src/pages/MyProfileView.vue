@@ -91,7 +91,14 @@ function goToEditProfile() {
 
             <div class="tabs">
               <button class="tab is-active" type="button">Profile</button>
-              <button class="tab" type="button">Advanced</button>
+
+              <button
+                class="tab"
+                type="button"
+                @click="router.push({ name: 'my-profile-advanced' })"
+              >
+                Advanced
+              </button>
             </div>
           </div>
         </div>
