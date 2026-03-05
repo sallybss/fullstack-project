@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import recipeRoutes from "./routes/recipeRoutes";
 import authRoutes from "./routes/authRoutes";
+import profileRoutes from "./routes/profileRoutes";
 
 const router: Router = Router();
 
@@ -51,8 +52,34 @@ router.get("/", (_req: Request, res: Response) => {
  *         description: User created
  *       400:
  *         description: "Validation error (for example: email already exists)"
+ *
+ * /auth/login:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Login
+ *     description: Login and get a JWT token to use with protected endpoints.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "sali@test.com"
+ *               password:
+ *                 type: string
+ *                 example: "123456"
+ *     responses:
+ *       200:
+ *         description: Login success (token returned)
+ *       400:
+ *         description: Invalid credentials/validation error
  */
 router.use("/auth", authRoutes);
+router.use("/profiles", profileRoutes);
 
 /**
  * RECIPES
@@ -93,7 +120,6 @@ router.use("/auth", authRoutes);
  *             servings: 2
  *             cuisine: "Italian"
  *             isPublic: true
- *             owner: "test-user-1"
  *     responses:
  *       201:
  *         description: Recipe created
@@ -198,8 +224,181 @@ router.use("/recipes", recipeRoutes);
  */
 
 /**
+ * COMMENTS
+ * Comment endpoints for recipes.
+ */
+
+/**
+ * @swagger
+ * /recipes/{id}/comments:
+ *   get:
+ *     tags: [Comments]
+ *     summary: Get comments for a recipe
+ *     description: Returns all comments attached to a recipe.
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Recipe id
+ *     responses:
+ *       200:
+ *         description: Recipe comments
+ *       404:
+ *         description: Recipe not found
+ *
+ *   post:
+ *     tags: [Comments]
+ *     summary: Add comment to recipe
+ *     description: Add a new comment to a recipe (requires login).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Recipe id
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [text]
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 example: "This recipe was amazing."
+ *     responses:
+ *       201:
+ *         description: Comment created
+ *       400:
+ *         description: Invalid comment body
+ *       401:
+ *         description: Missing/invalid token
+ *       404:
+ *         description: Recipe not found
+ */
+
+/**
+ * @swagger
+ * /recipes/{id}/comments/{commentId}:
+ *   put:
+ *     tags: [Comments]
+ *     summary: Update a comment
+ *     description: Update your own comment on a recipe (requires login).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Recipe id
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Comment id
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [text]
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 example: "Updated comment text"
+ *     responses:
+ *       200:
+ *         description: Comment updated
+ *       401:
+ *         description: Missing/invalid token
+ *       403:
+ *         description: Not allowed to update this comment
+ *       404:
+ *         description: Recipe or comment not found
+ *
+ *   delete:
+ *     tags: [Comments]
+ *     summary: Delete a comment
+ *     description: Delete your own comment from a recipe (requires login).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Recipe id
+ *       - in: path
+ *         name: commentId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Comment id
+ *     responses:
+ *       200:
+ *         description: Comment deleted
+ *       401:
+ *         description: Missing/invalid token
+ *       403:
+ *         description: Not allowed to delete this comment
+ *       404:
+ *         description: Recipe or comment not found
+ */
+
+/**
  * FAVORITES
  * These routes must exist in recipeRoutes, otherwise swagger will show them but they won't work.
+ */
+
+/**
+ * @swagger
+ * /recipes/{id}/rating:
+ *   post:
+ *     tags: [Recipes]
+ *     summary: Rate a recipe (1-5)
+ *     description: Add or update your rating for a recipe.
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Recipe id
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [value]
+ *             properties:
+ *               value:
+ *                 type: integer
+ *                 minimum: 1
+ *                 maximum: 5
+ *                 example: 5
+ *     responses:
+ *       200:
+ *         description: Updated rating summary
+ *       400:
+ *         description: Invalid rating value
+ *       401:
+ *         description: Missing/invalid token
+ *       404:
+ *         description: Recipe not found
  */
 
 /**
@@ -276,6 +475,192 @@ router.use("/recipes", recipeRoutes);
  *         description: Updated favorites list
  *       401:
  *         description: Missing/invalid token
+ */
+
+/**
+ * PROFILES
+ */
+
+/**
+ * @swagger
+ * /profiles/me:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: Get my profile
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user's profile
+ *       401:
+ *         description: Missing/invalid token
+ *
+ *   patch:
+ *     tags: [Profiles]
+ *     summary: Update my profile
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/ProfileUpdateInput"
+ *     responses:
+ *       200:
+ *         description: Updated profile
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Missing/invalid token
+ */
+
+/**
+ * @swagger
+ * /profiles/{userId}:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: Get profile by user id
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User id
+ *     responses:
+ *       200:
+ *         description: Profile data
+ *       404:
+ *         description: User/profile not found
+ */
+
+/**
+ * @swagger
+ * /profiles/{userId}/follow:
+ *   post:
+ *     tags: [Profiles]
+ *     summary: Follow user profile
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User id to follow
+ *     responses:
+ *       200:
+ *         description: Updated current profile
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Missing/invalid token
+ *
+ *   delete:
+ *     tags: [Profiles]
+ *     summary: Unfollow user profile
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User id to unfollow
+ *     responses:
+ *       200:
+ *         description: Updated current profile
+ *       401:
+ *         description: Missing/invalid token
+ */
+
+/**
+ * @swagger
+ * /profiles/{userId}/followers:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: List profile followers
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Followers list
+ *       404:
+ *         description: Profile not found
+ *
+ * /profiles/{userId}/following:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: List profiles this user follows
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Following list
+ *       404:
+ *         description: Profile not found
+ */
+
+/**
+ * @swagger
+ * /profiles/{userId}/recipes:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: Get all recipes created by a user
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Author user id
+ *     responses:
+ *       200:
+ *         description: List of authored recipes
+ *       400:
+ *         description: Invalid user id
+ */
+
+/**
+ * @swagger
+ * /profiles/me/saved:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: Get my saved recipes
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Saved recipes
+ *       401:
+ *         description: Missing/invalid token
+ *
+ * /profiles/{userId}/saved:
+ *   get:
+ *     tags: [Profiles]
+ *     summary: Get a user's saved recipes
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Saved recipes
+ *       404:
+ *         description: User not found
  */
 
 export default router;

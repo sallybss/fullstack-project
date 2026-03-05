@@ -17,15 +17,14 @@ export function setupDocs(app: Application) {
         url: "http://localhost:4000/api",
         description: "Local development server",
       },
-
-      // When deploy later (e.g. Render), replace with:
-      // {
-      //   url: "https://your-recipe-api.onrender.com/api",
-      //   description: "Production server"
-      // }
     ],
     components: {
       securitySchemes: {
+        BearerAuth: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+        },
         ApiKeyAuth: {
           type: "apiKey",
           in: "header",
@@ -53,6 +52,23 @@ export function setupDocs(app: Application) {
             cuisine: { type: "string" },
             isPublic: { type: "boolean" },
             owner: { type: "string" },
+            ratings: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  user: { type: "string" },
+                  value: { type: "integer", minimum: 1, maximum: 5 },
+                },
+              },
+            },
+            ratingSummary: {
+              type: "object",
+              properties: {
+                average: { type: "number", example: 4.5 },
+                count: { type: "integer", example: 12 },
+              },
+            },
           },
         },
         User: {
@@ -63,13 +79,44 @@ export function setupDocs(app: Application) {
             password: { type: "string" },
           },
         },
+        Profile: {
+          type: "object",
+          properties: {
+            user: { type: "string" },
+            username: { type: "string" },
+            bio: { type: "string" },
+            avatarUrl: { type: "string" },
+            followers: {
+              type: "array",
+              items: { type: "string" },
+            },
+            following: {
+              type: "array",
+              items: { type: "string" },
+            },
+          },
+        },
+        ProfileUpdateInput: {
+          type: "object",
+          properties: {
+            username: { type: "string", example: "Sali B" },
+            bio: { type: "string", example: "Home cook and recipe creator." },
+            avatarUrl: {
+              type: "string",
+              example: "https://images.example.com/avatar.jpg",
+            },
+          },
+        },
       },
     },
   };
 
   const options = {
     swaggerDefinition,
-    apis: [path.join(process.cwd(), "src", "**", "*.ts")],
+    apis: [
+      path.join(process.cwd(), "src", "router.ts"),
+      path.join(process.cwd(), "src", "routes", "*.ts"),
+    ],
   };
 
   const swaggerSpec = swaggerJSDoc(options);

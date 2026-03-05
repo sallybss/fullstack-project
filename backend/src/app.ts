@@ -18,6 +18,7 @@ app.use(express.json());
 
 const allowedOrigins = new Set<string>([
   "http://localhost:5173",
+  "http://localhost:4000",
   // Add Render frontend later:
   // "https://your-frontend.onrender.com",
 ]);
@@ -36,7 +37,16 @@ app.use(
 );
 
 app.use("/api", router);
-setupDocs(app);
+
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  if (typeof err?.message === "string" && err.message.startsWith("CORS blocked for origin:")) {
+    return res.status(403).json({ error: err.message });
+  }
+  if (err) {
+    return res.status(500).json({ error: "Internal server error" });
+  }
+  return res.status(500).json({ error: "Internal server error" });
+});
 
 export async function startServer() {
   const PORT = Number(process.env.PORT) || 4000;
@@ -45,11 +55,27 @@ export async function startServer() {
   console.log("PORT =", PORT);
   console.log("DBHOST exists? =", Boolean(process.env.DBHOST));
 
-  await connect();
-  console.log("Database connected");
-
   app.listen(PORT, () => {
     console.log(`Server is up and running on port: ${PORT}`);
+
+    // Warm up DB connection without blocking server startup.
+    void connect()
+      .then(() => {
+        console.log("Database connected");
+      })
+      .catch((error) => {
+        console.error("Initial database connection failed:", error);
+      });
+
+    // Swagger generation can be slow; initialize docs after server boot.
+    setImmediate(() => {
+      try {
+        setupDocs(app);
+        console.log("Swagger docs ready at /swagger");
+      } catch (error) {
+        console.error("Failed to initialize Swagger docs:", error);
+      }
+    });
   });
 }
 

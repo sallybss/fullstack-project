@@ -13,7 +13,6 @@ export async function connect() {
     return;
   }
 
-  // ✅ Fail fast if MongoDB is unreachable (no infinite waiting)
   connectPromise = mongoose.connect(uri, {
     serverSelectionTimeoutMS: 5000,
     connectTimeoutMS: 5000,
@@ -30,9 +29,14 @@ export async function connect() {
 }
 
 export async function disconnect() {
-  if (mongoose.connection.readyState !== 0) {
-    await mongoose.disconnect();
-    console.log("Database connection closed");
+  try {
+    if (mongoose.connection.readyState !== 0) {
+      await mongoose.disconnect();
+      console.log("Database connection closed");
+    }
+  } catch (error) {
+    // Do not let cleanup failures break API responses.
+    console.error("Database disconnect warning:", error);
   }
 }
 
