@@ -46,11 +46,6 @@ const paged = computed(() => {
   return myRecipes.value.slice(start, start + pageSize);
 });
 
-function onPageChange(p: number) {
-  page.value = p;
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
 // actions
 function toggleSave(id: string) {
   const r = all.value.find((x) => x.id === id);
@@ -161,11 +156,11 @@ function goToEditProfile() {
         </section>
 
         <!-- PAGER -->
-        <div class="pager" v-if="totalPages > 1">
+        <div class="pager" v-if="myRecipes.length > pageSize">
           <PaginationBar
-            :modelValue="page"
-            :pages="totalPages"
-            @update:modelValue="onPageChange"
+            v-model:page="page"
+            :pageSize="pageSize"
+            :total="myRecipes.length"
           />
         </div>
       </div>

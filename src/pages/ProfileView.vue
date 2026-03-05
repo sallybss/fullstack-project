@@ -52,20 +52,10 @@ function toggleFollow() {
 const pageSize = 8; // 2 rows of 4
 const page = ref(1);
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(userRecipes.value.length / pageSize)),
-);
-
 const pagedRecipes = computed(() => {
   const start = (page.value - 1) * pageSize;
   return userRecipes.value.slice(start, start + pageSize);
 });
-
-function onPageChange(newPage: number) {
-  page.value = newPage;
-  // optional: scroll to top of card area
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
 
 /** Save toggle (if your RecipeCard emits @toggle-save) */
 function toggleSave(id: string) {
@@ -109,7 +99,9 @@ function toggleSave(id: string) {
 
             <div class="stat">
               <i class="pi pi-book"></i>
-              <span><b>{{ userRecipes.length }}</b> recipes</span>
+              <span
+                ><b>{{ userRecipes.length }}</b> recipes</span
+              >
             </div>
           </div>
         </div>
@@ -131,11 +123,11 @@ function toggleSave(id: string) {
           </div>
 
           <!-- pagination -->
-          <div class="pager" v-if="totalPages > 1">
+          <div class="pager" v-if="userRecipes.length > pageSize">
             <PaginationBar
-              :modelValue="page"
-              :pages="totalPages"
-              @update:modelValue="onPageChange"
+              v-model:page="page"
+              :pageSize="pageSize"
+              :total="userRecipes.length"
             />
           </div>
         </section>

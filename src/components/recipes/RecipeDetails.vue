@@ -118,13 +118,14 @@ import BaseButton from "../common/BaseButton.vue";
 
 const props = defineProps<{ recipe: Recipe }>();
 
+const router = useRouter();
+
 function goToProfile() {
   const id = props.recipe.author?.id;
   if (!id) return;
-  router.push(`/profile/${id}`);
-}
 
-const router = useRouter();
+  router.push({ name: "profile", params: { id } });
+}
 </script>
 
 <style scoped>

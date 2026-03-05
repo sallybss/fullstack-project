@@ -85,7 +85,12 @@ function submitRecipe() {
             <label>Recipe Title</label>
             <span class="counter">{{ title.length }}/100</span>
           </div>
-          <input v-model="title" maxlength="100" type="text" placeholder="Enter recipe title" />
+          <input
+            v-model="title"
+            maxlength="100"
+            type="text"
+            placeholder="Enter recipe title"
+          />
         </div>
 
         <!-- Description -->
@@ -94,7 +99,11 @@ function submitRecipe() {
             <label>Description <span class="req">*</span></label>
             <span class="counter">{{ description.length }}/500</span>
           </div>
-          <textarea v-model="description" maxlength="500" placeholder="Describe your recipe..." />
+          <textarea
+            v-model="description"
+            maxlength="500"
+            placeholder="Describe your recipe..."
+          />
         </div>
 
         <!-- Row -->
@@ -102,7 +111,12 @@ function submitRecipe() {
           <div class="field">
             <label>Cook time</label>
             <div class="suffix">
-              <input v-model.number="cookTime" type="number" min="0" placeholder="" />
+              <input
+                v-model.number="cookTime"
+                type="number"
+                min="0"
+                placeholder=""
+              />
               <span>min</span>
             </div>
           </div>
@@ -138,7 +152,11 @@ function submitRecipe() {
               aria-label="Remove ingredient"
               @click="removeIngredient(index)"
               :disabled="ingredients.length === 1"
-              :title="ingredients.length === 1 ? 'At least one ingredient is required' : 'Remove'"
+              :title="
+                ingredients.length === 1
+                  ? 'At least one ingredient is required'
+                  : 'Remove'
+              "
             >
               <i class="pi pi-trash"></i>
             </button>
@@ -156,9 +174,11 @@ function submitRecipe() {
         <!-- Instructions -->
         <section class="section">
           <h2>Instructions</h2>
-          <p class="sub">Break down your recipe into clear, step-by-step instructions.</p>
+          <p class="sub">
+            Break down your recipe into clear, step-by-step instructions.
+          </p>
 
-          <div v-for="(step, index) in steps" :key="index" class="step-row">
+          <div v-for="(_, index) in steps" :key="index" class="step-row">
             <div class="step-head">
               <span class="step-label">Step {{ index + 1 }}</span>
 
@@ -168,13 +188,21 @@ function submitRecipe() {
                 aria-label="Remove step"
                 @click="removeStep(index)"
                 :disabled="steps.length === 1"
-                :title="steps.length === 1 ? 'At least one step is required' : 'Remove'"
+                :title="
+                  steps.length === 1
+                    ? 'At least one step is required'
+                    : 'Remove'
+                "
               >
                 <i class="pi pi-trash"></i>
               </button>
             </div>
 
-            <textarea v-model="steps[index]" maxlength="2000" placeholder="Input text" />
+            <textarea
+              v-model="steps[index]"
+              maxlength="2000"
+              placeholder="Input text"
+            />
             <div class="step-counter">{{ steps[index].length }}/2000</div>
           </div>
 
@@ -185,8 +213,12 @@ function submitRecipe() {
 
         <!-- Actions -->
         <div class="actions">
-          <BaseButton variant="outline" type="button" @click="goBack">Cancel</BaseButton>
-          <BaseButton variant="primary" type="button" @click="submitRecipe">Post</BaseButton>
+          <BaseButton variant="outline" type="button" @click="goBack"
+            >Cancel</BaseButton
+          >
+          <BaseButton variant="primary" type="button" @click="submitRecipe"
+            >Post</BaseButton
+          >
         </div>
       </div>
     </main>

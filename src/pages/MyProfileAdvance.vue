@@ -111,12 +111,6 @@ function deleteAccount() {
   alert("Deleted (mock)");
 }
 
-// ----- Tabs navigation -----
-function goProfileTab() {
-  // change this to your real route:
-  // router.push({ name: "my-profile" })
-  router.push("/my-profile");
-}
 </script>
 
 <template>
