@@ -7,9 +7,11 @@ import RecipeView from "../pages/RecipeView.vue";
 import AddRecipe from "../pages/AddRecipe.vue";
 import MyProfileView from "../pages/MyProfileView.vue";
 import MyProfileAdvance from "../pages/MyProfileAdvance.vue";
+import Saved from "../pages/Saved.vue";
 
 const routes = [
   { path: "/", name: "home", component: Home },
+  { path: "/saved", name: "saved", component: Saved },
 
   { path: "/signin", name: "signin", component: SignIn, meta: { hideLayout: true } },
   { path: "/signup", name: "signup", component: SignUp, meta: { hideLayout: true } },

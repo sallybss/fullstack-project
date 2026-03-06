@@ -133,7 +133,6 @@ function goToProfile() {
   background: #fff;
   border-radius: 26px;
   padding: 22px 26px 26px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.12);
 }
 
 .top {

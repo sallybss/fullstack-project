@@ -23,18 +23,14 @@
       </nav>
 
       <div class="actions">
-        <button class="iconBtn" type="button" aria-label="Saved recipes">
-          <i class="pi pi-bookmark"></i>
-        </button>
 
-        <button
-          class="iconBtn"
-          type="button"
-          aria-label="Profile"
-          @click="$router.push('/me')"
-        >
+        <RouterLink to="/saved" class="iconBtn" aria-label="Saved recipes">
+          <i class="pi pi-bookmark"></i>
+        </RouterLink>
+
+        <RouterLink to="/me" class="iconBtn">
           <i class="pi pi-user"></i>
-        </button>
+        </RouterLink>
 
         <BaseButton variant="outline" type="button" @click="goToAddRecipe">
           Add recipe
@@ -135,6 +131,8 @@ function goToAddRecipe() {
   cursor: pointer;
   display: grid;
   place-items: center;
+
+  text-decoration: none;
 }
 
 .iconBtn:hover {

@@ -1,8 +1,10 @@
 <template>
   <div class="page">
     <main class="page__main">
-      <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700">
-        <HeroSearch v-model="query" />
+      <HeroSection imageUrl="https://picsum.photos/seed/savedhero/1400/700">
+        <div class="saved-hero">
+          <h1 class="saved-hero__title">Saved Recipes</h1>
+        </div>
       </HeroSection>
 
       <section class="section">
@@ -11,9 +13,9 @@
           <SortSelect v-model="sortBy" />
         </div>
 
-        <RecipeGrid v-if="pagedRecipes.length">
+        <RecipeGrid v-if="pagedSavedRecipes.length">
           <RecipeCard
-            v-for="recipe in pagedRecipes"
+            v-for="recipe in pagedSavedRecipes"
             :key="recipe.id"
             :recipe="recipe"
             @toggle-save="toggleSave"
@@ -21,19 +23,15 @@
         </RecipeGrid>
 
         <div v-else class="empty-state">
-          <h2>No recipes found</h2>
-          <p>
-            There are no recipes in
-            <strong>{{ selectedCategory }}</strong>
-            <span v-if="query"> matching “{{ query }}”</span>.
-          </p>
+          <h2>No saved recipes yet</h2>
+          <p>Your saved recipes will appear here.</p>
         </div>
 
         <PaginationBar
-          v-if="filteredRecipes.length > 0"
+          v-if="filteredSavedRecipes.length > 0"
           :page="page"
           :page-size="pageSize"
-          :total="filteredRecipes.length"
+          :total="filteredSavedRecipes.length"
           @update:page="page = $event"
         />
       </section>
@@ -45,7 +43,6 @@
 import { computed, ref, watch } from "vue";
 
 import PaginationBar from "../components/common/PaginationBar.vue";
-import HeroSearch from "../components/home/HeroSearch.vue";
 import HeroSection from "../components/common/HeroSection.vue";
 import CategoryChips from "../components/home/CategoryChips.vue";
 import SortSelect from "../components/home/SortSelect.vue";
@@ -55,23 +52,19 @@ import RecipeCard from "../components/recipes/RecipeCard.vue";
 import { useRecipes } from "../composables/useRecipes";
 import type { RecipeCategory } from "../types/recipe";
 
-const { recipes, categories, toggleSave } = useRecipes();
+const { savedRecipes, categories, toggleSave } = useRecipes();
 
-const query = ref("");
 const selectedCategory = ref<RecipeCategory>("Desserts");
 const sortBy = ref<"newest" | "rating" | "time">("newest");
 
 const page = ref(1);
 const pageSize = 12;
 
-const filteredRecipes = computed(() => {
-  const q = query.value.trim().toLowerCase();
-
-  return recipes.value
+const filteredSavedRecipes = computed(() => {
+  return savedRecipes.value
     .filter((r) =>
-      selectedCategory.value ? r.category === selectedCategory.value : true,
+      selectedCategory.value ? r.category === selectedCategory.value : true
     )
-    .filter((r) => (q ? r.title.toLowerCase().includes(q) : true))
     .slice()
     .sort((a, b) => {
       if (sortBy.value === "newest") return b.createdAt - a.createdAt;
@@ -80,13 +73,13 @@ const filteredRecipes = computed(() => {
     });
 });
 
-watch([query, selectedCategory, sortBy], () => {
+watch([selectedCategory, sortBy], () => {
   page.value = 1;
 });
 
-const pagedRecipes = computed(() => {
+const pagedSavedRecipes = computed(() => {
   const start = (page.value - 1) * pageSize;
-  return filteredRecipes.value.slice(start, start + pageSize);
+  return filteredSavedRecipes.value.slice(start, start + pageSize);
 });
 </script>
 
@@ -112,6 +105,20 @@ const pagedRecipes = computed(() => {
   justify-content: space-between;
   gap: 16px;
   margin: 18px 0 18px;
+}
+
+.saved-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  text-align: center;
+}
+
+.saved-hero__title {
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  font-weight: 700;
+  color: white;
 }
 
 .empty-state {

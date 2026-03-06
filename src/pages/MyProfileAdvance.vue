@@ -334,7 +334,6 @@ function deleteAccount() {
   background: #fff;
   border-radius: 28px;
   padding: 22px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
 }
 
 /* first big card only */
@@ -448,10 +447,7 @@ function deleteAccount() {
 
 /* section cards inside */
 .sectionCard {
-  margin-top: 18px;
-  border: 1px solid #f0f0f0;
-  border-radius: 18px;
-  padding: 18px;
+  margin-top: 30px;
 }
 
 .sectionHead {
@@ -460,6 +456,7 @@ function deleteAccount() {
   align-items: flex-start;
   gap: 14px;
   margin-bottom: 14px;
+  margin-top: 14px;
 }
 
 .sectionTitle {
