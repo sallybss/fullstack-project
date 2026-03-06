@@ -110,7 +110,6 @@ function deleteAccount() {
   console.log("delete account");
   alert("Deleted (mock)");
 }
-
 </script>
 
 <template>
@@ -136,6 +135,14 @@ function deleteAccount() {
               </button>
 
               <button class="tab is-active" type="button">Advanced</button>
+
+              <button
+                class="tab"
+                type="button"
+                @click="router.push({ name: 'admin-panel' })"
+              >
+                Admin Panel
+              </button>
             </div>
           </div>
         </div>

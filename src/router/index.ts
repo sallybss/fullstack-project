@@ -8,6 +8,7 @@ import AddRecipe from "../pages/AddRecipe.vue";
 import MyProfileView from "../pages/MyProfileView.vue";
 import MyProfileAdvance from "../pages/MyProfileAdvance.vue";
 import Saved from "../pages/Saved.vue";
+import AdminPanelView from "../pages/AdminPanelView.vue";
 
 const routes = [
   { path: "/", name: "home", component: Home },
@@ -23,6 +24,7 @@ const routes = [
 
   { path: "/my-profile", name: "my-profile", component: MyProfileView, alias: "/me" },
   { path: "/my-profile/advanced", name: "my-profile-advanced", component: MyProfileAdvance, alias: "/me/advanced" },
+  { path: "/me/admin", name: "admin-panel", component: AdminPanelView },
 
   { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
 ];

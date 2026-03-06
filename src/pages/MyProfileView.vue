@@ -94,6 +94,14 @@ function goToEditProfile() {
               >
                 Advanced
               </button>
+
+              <button
+                class="tab"
+                type="button"
+                @click="router.push({ name: 'admin-panel' })"
+              >
+                Admin Panel
+              </button>
             </div>
           </div>
         </div>
