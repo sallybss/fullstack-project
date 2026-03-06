@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { verifyToken } from "../controllers/authController";
+import { uploadRecipePhoto } from "../middleware/recipeUpload";
 import {
   addRecipeComment,
   createRecipe,
@@ -27,7 +28,7 @@ router.get("/favorites/ids", verifyToken, getFavoriteRecipeIds);
 router.get("/:id/comments", getRecipeComments);
 router.get("/:id", getRecipeById);
 
-router.post("/", verifyToken, createRecipe);
+router.post("/", verifyToken, uploadRecipePhoto.single("photo"), createRecipe);
 router.post("/:id/comments", verifyToken, addRecipeComment);
 router.post("/:id/favorite", verifyToken, addFavoriteRecipe);
 router.post("/:id/rating", verifyToken, rateRecipe);

@@ -36,7 +36,8 @@ export function setupDocs(app: Application) {
           type: "object",
           properties: {
             title: { type: "string" },
-            imageUrl: { type: "string" },
+            imageUrl: { type: "string", description: "Stored photo path/URL on server." },
+            photo: { type: "string", format: "binary", description: "Optional uploaded image file." },
             description: { type: "string" },
             ingredients: {
               type: "array",

@@ -73,7 +73,6 @@ export async function registerUser(req: Request, res: Response) {
     }
     return res.status(500).send("Error registering user. Error: " + error);
   } finally {
-    // your disconnect() only closes if force=true, so this is safe either way
     await disconnect();
   }
 }
@@ -103,7 +102,7 @@ export async function loginUser(req: Request, res: Response) {
     const token = jwt.sign(
       { id: userId, username: user.username, email: user.email },
       TOKEN_SECRET,
-      { expiresIn: "2h" } // keep short for security; use refresh tokens if you need long sessions
+      { expiresIn: "2h" }
     );
 
     return res
@@ -116,6 +115,26 @@ export async function loginUser(req: Request, res: Response) {
       return res.status(503).json({ error: "Database unavailable. Check DBHOST/Atlas network access." });
     }
     return res.status(500).send("Error logging in user. Error: " + error);
+  } finally {
+    await disconnect();
+  }
+}
+
+export async function getAllUsers(_req: Request, res: Response) {
+  try {
+    await connect();
+
+    const users = await userModel
+      .find({})
+      .select("_id username email bio avatarUrl role favorites createdAt updatedAt");
+
+    return res.status(200).json({ error: null, data: users });
+  } catch (error: any) {
+    console.error("getAllUsers failed:", error);
+    if (isDbUnavailableError(error)) {
+      return res.status(503).json({ error: "Database unavailable. Check DBHOST/Atlas network access." });
+    }
+    return res.status(500).send("Error retrieving users. Error: " + error);
   } finally {
     await disconnect();
   }

@@ -35,7 +35,6 @@ export async function disconnect() {
       console.log("Database connection closed");
     }
   } catch (error) {
-    // Do not let cleanup failures break API responses.
     console.error("Database disconnect warning:", error);
   }
 }

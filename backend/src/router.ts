@@ -77,6 +77,19 @@ router.get("/", (_req: Request, res: Response) => {
  *         description: Login success (token returned)
  *       400:
  *         description: Invalid credentials/validation error
+ *
+ * /auth/users:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get all users
+ *     description: Returns all users (requires login).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: List of users
+ *       401:
+ *         description: Missing/invalid token
  */
 router.use("/auth", authRoutes);
 router.use("/profiles", profileRoutes);
@@ -101,7 +114,7 @@ router.use("/profiles", profileRoutes);
  *   post:
  *     tags: [Recipes]
  *     summary: Add a recipe
- *     description: Add a new recipe (requires login).
+ *     description: Add a new recipe (requires login). Photo is optional via imageUrl (or photo alias).
  *     security:
  *       - ApiKeyAuth: []
  *     requestBody:
@@ -120,6 +133,41 @@ router.use("/profiles", profileRoutes);
  *             servings: 2
  *             cuisine: "Italian"
  *             isPublic: true
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               title:
+ *                 type: string
+ *               photo:
+ *                 type: string
+ *                 format: binary
+ *               description:
+ *                 type: string
+ *               ingredients:
+ *                 oneOf:
+ *                   - type: array
+ *                     items:
+ *                       type: string
+ *                   - type: string
+ *                     description: JSON array string or comma-separated values
+ *               instructions:
+ *                 oneOf:
+ *                   - type: array
+ *                     items:
+ *                       type: string
+ *                   - type: string
+ *                     description: JSON array string or comma-separated values
+ *               prepTimeMinutes:
+ *                 type: number
+ *               cookTimeMinutes:
+ *                 type: number
+ *               servings:
+ *                 type: number
+ *               cuisine:
+ *                 type: string
+ *               isPublic:
+ *                 type: boolean
  *     responses:
  *       201:
  *         description: Recipe created
@@ -495,7 +543,7 @@ router.use("/recipes", recipeRoutes);
  *       401:
  *         description: Missing/invalid token
  *
- *   patch:
+ *   put:
  *     tags: [Profiles]
  *     summary: Update my profile
  *     security:

@@ -17,18 +17,37 @@ function isValidUrl(value: unknown): boolean {
 function pickRecipeBody(body: any) {
   const recipe: any = {};
 
+  const parseStringArray = (value: unknown): string[] | undefined => {
+    if (Array.isArray(value)) return value.map((v) => String(v));
+    if (typeof value !== "string") return undefined;
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map((v) => String(v));
+      } catch {
+      }
+    }
+    return trimmed.split(",").map((v) => v.trim()).filter(Boolean);
+  };
+
   if (typeof body.title === "string") recipe.title = body.title;
   if (typeof body.description === "string") recipe.description = body.description;
-  if (Array.isArray(body.ingredients)) recipe.ingredients = body.ingredients;
-  if (Array.isArray(body.instructions)) recipe.instructions = body.instructions;
+  const ingredients = parseStringArray(body.ingredients);
+  if (ingredients) recipe.ingredients = ingredients;
+  const instructions = parseStringArray(body.instructions);
+  if (instructions) recipe.instructions = instructions;
   if (typeof body.cuisine === "string") recipe.cuisine = body.cuisine;
   if (typeof body.isPublic === "boolean") recipe.isPublic = body.isPublic;
 
-  if (body.imageUrl !== undefined) {
-    if (!isValidUrl(body.imageUrl)) {
-      throw new Error("imageUrl must be a valid http/https URL");
+  const rawImage = body.imageUrl ?? body.photo;
+  if (rawImage !== undefined) {
+    const image = String(rawImage ?? "").trim();
+    if (image && !isValidUrl(image)) {
+      throw new Error("imageUrl/photo must be a valid http/https URL");
     }
-    recipe.imageUrl = body.imageUrl;
+    recipe.imageUrl = image;
   }
 
   if (body.prepTimeMinutes !== undefined) {
@@ -117,12 +136,14 @@ export async function createRecipe(req: Request, res: Response): Promise<void> {
     await connect();
 
     const data = pickRecipeBody(req.body);
+    if (req.file?.filename) {
+      data.imageUrl = `/uploads/recipes/${req.file.filename}`;
+    }
     const authUserId = getAuthUserId(req);
     if (!authUserId) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    // Always enforce recipe ownership from the authenticated user.
     data.owner = authUserId;
 
     const recipe = new recipeModel(data);

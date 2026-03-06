@@ -16,7 +16,7 @@ import {
 const router = Router();
 
 router.get("/me", verifyToken, getMyProfile);
-router.patch("/me", verifyToken, updateMyProfile);
+router.put("/me", verifyToken, updateMyProfile);
 router.get("/me/saved", verifyToken, getMySavedRecipes);
 
 router.get("/:userId", getProfileByUserId);
