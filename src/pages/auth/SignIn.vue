@@ -31,7 +31,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import bg from '../assets/images/auth_bg.jpg'
+import bg from '../../assets/images/auth_bg.jpg'
 import BaseButton from '../../components/common/BaseButton.vue'
 
 const email = ref('')

@@ -73,7 +73,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import BaseButton from '../../components/common/BaseButton.vue'
-import bg from '../assets/images/auth_bg.jpg'
+import bg from '../../assets/images/auth_bg.jpg'
 
 const name = ref('')
 const email = ref('')
