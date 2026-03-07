@@ -1,0 +1,76 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "FoodFinder REST API",
+  "main": "index.js",
+  "scripts": {
+    "build": "rm -rf ./dist.tmp && tsc --outDir ./dist.tmp && rm -rf ./dist && mv ./dist.tmp ./dist",
+    "start": "node dist/index.js",
+    "start-dev": "nodemon --no-update-notifier",
+    "start-dev:once": "ts-node --transpile-only ./src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "nodemonConfig": {
+    "verbose": false,
+    "watch": [
+      "src"
+    ],
+    "ext": "ts,json",
+    "ignore": [
+      "node_modules/**",
+      "dist/**",
+      ".git/**",
+      "*.log",
+      "**/*.tsbuildinfo",
+      ".cache/**",
+      ".ts-node/**"
+    ],
+    "delay": "800",
+    "legacyWatch": true,
+    "exec": "ts-node --transpile-only ./src/index.ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sallybss/fullstack-project.git"
+  },
+  "keywords": [
+    "fullstack",
+    "api",
+    "project"
+  ],
+  "author": "sallybss",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sallybss/fullstack-project/issues"
+  },
+  "homepage": "https://github.com/sallybss/fullstack-project#readme",
+  "dependencies": {
+    "@types/multer": "^2.1.0",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "cross-env": "^10.1.0",
+    "dotenv-flow": "^4.1.0",
+    "express": "^5.2.1",
+    "joi": "^18.0.2",
+    "jsonwebtoken": "^9.0.3",
+    "mongodb": "^7.1.0",
+    "mongoose": "^9.2.3",
+    "multer": "^2.1.1",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/joi": "^17.2.2",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.3.2",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
+}
