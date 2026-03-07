@@ -2,13 +2,13 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import HeroSection from "../components/common/HeroSection.vue";
-import BaseButton from "../components/common/BaseButton.vue";
-import PaginationBar from "../components/common/PaginationBar.vue";
-import AdvancedRecipeCard from "../components/recipes/AdvancedRecipeCard.vue";
+import HeroSection from "../../components/common/HeroSection.vue";
+import BaseButton from "../../components/common/BaseButton.vue";
+import PaginationBar from "../../components/common/PaginationBar.vue";
+import AdvancedRecipeCard from "../../components/recipes/AdvancedRecipeCard.vue";
 
-import { mockRecipes } from "../data/mockRecipes";
-import type { Recipe } from "../types/recipe";
+import { mockRecipes } from "../../data/mockRecipes";
+import type { Recipe } from "../../types/recipe";
 
 const router = useRouter();
 

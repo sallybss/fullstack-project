@@ -2,9 +2,9 @@
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import HeroSection from "../components/common/HeroSection.vue";
-import PaginationBar from "../components/common/PaginationBar.vue";
-import BaseButton from "../components/common/BaseButton.vue";
+import HeroSection from "../../components/common/HeroSection.vue";
+import PaginationBar from "../../components/common/PaginationBar.vue";
+import BaseButton from "../../components/common/BaseButton.vue";
 
 const router = useRouter();
 

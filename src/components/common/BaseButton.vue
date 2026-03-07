@@ -8,16 +8,16 @@
 </template>
 
 <script setup lang="ts">
-defineProps({
-  variant: {
-    type: String,
-    default: 'primary',
-  },
-  type: {
-    type: String,
-    default: 'button',
+withDefaults(
+  defineProps<{
+    variant?: "primary" | "outline" | "ghost";
+    type?: "button" | "submit" | "reset";
+  }>(),
+  {
+    variant: "primary",
+    type: "button",
   }
-})
+);
 </script>
 
 <style scoped>

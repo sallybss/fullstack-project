@@ -40,12 +40,12 @@
 import { computed, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { mockRecipes } from "../data/mockRecipes";
-import type { Recipe } from "../types/recipe";
+import { mockRecipes } from "../../data/mockRecipes";
+import type { Recipe } from "../../types/recipe";
 
-import RecipeDetails from "../components/recipes/RecipeDetails.vue";
-import HeroSection from "../components/common/HeroSection.vue";
-import RecipeCard from "../components/recipes/RecipeCard.vue";
+import RecipeDetails from "../../components/recipes/RecipeDetails.vue";
+import HeroSection from "../../components/common/HeroSection.vue";
+import RecipeCard from "../../components/recipes/RecipeCard.vue";
 
 /**
  * Helpers
