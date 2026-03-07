@@ -1,16 +1,25 @@
 <template>
-  <section class="hero" :style="{ backgroundImage: `url(${imageUrl})` }">
+  <section class="hero" :style="{ backgroundImage: imageUrl ? `url(${imageUrl})` : 'none' }">
     <div class="overlay"></div>
 
     <div class="content">
-      <slot />
+      <!-- If user provides slot, show it -->
+      <slot v-if="$slots.default" />
+
+      <!-- Otherwise show title/subtitle -->
+      <div v-else class="text">
+        <h1>{{ title }}</h1>
+        <p v-if="subtitle">{{ subtitle }}</p>
+      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
 defineProps<{
-  imageUrl: string;
+  imageUrl?: string;
+  title?: string;
+  subtitle?: string;
 }>();
 </script>
 
@@ -38,5 +47,18 @@ defineProps<{
   display: grid;
   place-items: center;
   padding: 24px 16px;
+  text-align: center;
+}
+
+.text h1 {
+  color: white;
+  font-size: 36px;
+  margin: 0;
+}
+
+.text p {
+  color: rgba(255, 255, 255, 0.85);
+  margin-top: 10px;
+  font-size: 16px;
 }
 </style>

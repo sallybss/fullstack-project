@@ -2,38 +2,58 @@
   <header class="header">
     <div class="header__inner">
       <RouterLink to="/" class="brand" aria-label="FoodFinder home">
-        <img class="brand__logo" width="700px" src="../../assets/images/foodfinder.svg" alt="" />
+        <img
+          class="brand__logo"
+          width="700px"
+          src="../../assets/images/foodfinder.svg"
+          alt=""
+        />
       </RouterLink>
 
       <nav class="nav" aria-label="Main navigation">
-        <RouterLink to="/" class="nav__link" active-class="is-active">Home</RouterLink>
-        <RouterLink to="/story" class="nav__link" active-class="is-active">Our story</RouterLink>
-        <RouterLink to="/contact" class="nav__link" active-class="is-active">Ask us</RouterLink>
+        <RouterLink to="/" class="nav__link" active-class="is-active"
+          >Home</RouterLink
+        >
+        <RouterLink to="/story" class="nav__link" active-class="is-active"
+          >Our story</RouterLink
+        >
+        <RouterLink to="/contact" class="nav__link" active-class="is-active"
+          >Ask us</RouterLink
+        >
       </nav>
 
       <div class="actions">
-        <button class="iconBtn" type="button" aria-label="Saved recipes">
+
+        <RouterLink to="/saved" class="iconBtn" aria-label="Saved recipes">
           <i class="pi pi-bookmark"></i>
-        </button>
+        </RouterLink>
 
-        <button class="iconBtn" type="button" aria-label="Profile">
-            <i class="pi pi-user"></i>
-        </button>
+        <RouterLink to="/me" class="iconBtn">
+          <i class="pi pi-user"></i>
+        </RouterLink>
 
-        <BaseButton variant="outline" class="addBtn">Add recipe</BaseButton>
+        <BaseButton variant="outline" type="button" @click="goToAddRecipe">
+          Add recipe
+        </BaseButton>
       </div>
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import BaseButton from './BaseButton.vue'
+import { useRouter } from "vue-router";
+import BaseButton from "../common/BaseButton.vue";
+
+const router = useRouter();
+
+function goToAddRecipe() {
+  router.push("/add-recipe");
+}
 </script>
 
 <style scoped lang="scss">
-
 .header {
-  position: absolute; 
+  position: absolute;
   top: 0;
   left: 0;
   right: 0;
@@ -111,6 +131,8 @@ import BaseButton from './BaseButton.vue'
   cursor: pointer;
   display: grid;
   place-items: center;
+
+  text-decoration: none;
 }
 
 .iconBtn:hover {

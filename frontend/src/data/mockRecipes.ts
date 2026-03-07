@@ -14,7 +14,7 @@ export const mockRecipes: Recipe[] = [
     saved: false,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
 
-    author: { name: 'Jane Doe', email: 'john@example.com', initials: 'JD' },
+    author: { id: "user-1", name: "Jane Doe", email: "john@example.com", initials: "JD" },    
     servings: 2,
     description: 'Delicate sea bass fillet with a fragrant herb crust...',
     ingredients: ['Sea bass fillets', 'Breadcrumbs', 'Herbs', 'Butter', 'Lemon'],
@@ -37,7 +37,7 @@ export const mockRecipes: Recipe[] = [
     saved: true,
     createdAt: Date.now() - 1000 * 60 * 60 * 24 * 10,
 
-    author: { name: 'Jane Doe', email: 'john@example.com', initials: 'JD' },
+    author: { id: "user-1", name: "Jane Doe", email: "john@example.com", initials: "JD" },
     servings: 4,
     description: 'Short description...',
     ingredients: ['Ingredient 1', 'Ingredient 2'],
