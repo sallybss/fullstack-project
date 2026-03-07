@@ -1,36 +1,43 @@
 <template>
   <article class="card">
     <div class="card__imageWrap">
-      <img class="card__image" :src="recipe.imageUrl" :alt="recipe.title" />
+      <img
+        class="card__image"
+        :src="recipe.imageUrl || fallbackImage"
+        :alt="recipe.title"
+        @error="handleImageError"
+      />
     </div>
 
     <div class="card__meta">
       <div class="card__time">
         <span class="card__clock">🕒</span>
-        <span>{{ recipe.timeMinutes }} min</span>
+        <span>{{ totalTime }} min</span>
       </div>
 
       <div class="card__rating">
         <span class="stars" aria-hidden="true">
           <span v-for="n in 5" :key="n" class="star">
-            {{ n <= Math.round(recipe.rating) ? '★' : '☆' }}
+            {{ n <= Math.round(averageRating) ? "★" : "☆" }}
           </span>
         </span>
-        <span class="ratingCount">({{ recipe.ratingCount }})</span>
+        <span class="ratingCount">({{ ratingCount }})</span>
       </div>
     </div>
 
     <h3 class="card__title">{{ recipe.title }}</h3>
 
     <div class="card__actions">
-      <BaseButton variant="outline" class="card__view" type="button" @click="goToRecipe">View</BaseButton>
-      <button
-        class="saveBtn"
+      <BaseButton
+        variant="outline"
+        class="card__view"
         type="button"
-        :class="{ 'is-saved': recipe.saved }"
-        @click="$emit('toggle-save', recipe.id)"
-        aria-label="Save recipe"
+        @click="goToRecipe"
       >
+        View
+      </BaseButton>
+
+      <button class="saveBtn" type="button" aria-label="Save recipe">
         <i class="pi pi-bookmark"></i>
       </button>
     </div>
@@ -38,22 +45,39 @@
 </template>
 
 <script setup lang="ts">
-import type { Recipe } from '../../types/recipe'
-import BaseButton from '../common/BaseButton.vue'
-import { useRouter } from 'vue-router'
+import { computed } from "vue";
+import { useRouter } from "vue-router";
+import BaseButton from "../common/BaseButton.vue";
+import type { Recipe } from "../../interfaces/recipe";
 
-const router = useRouter()
+const router = useRouter();
 
-const props = defineProps<{ recipe: Recipe }>()
+const props = defineProps<{
+  recipe: Recipe;
+}>();
+
+const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
+
+const totalTime = computed(() => {
+  return props.recipe.prepTimeMinutes + props.recipe.cookTimeMinutes;
+});
+
+const averageRating = computed(() => {
+  return props.recipe.ratingSummary?.average ?? 0;
+});
+
+const ratingCount = computed(() => {
+  return props.recipe.ratingSummary?.count ?? 0;
+});
 
 function goToRecipe() {
-  const cleanId = String(props.recipe.id).split('-')[0]
-  router.push({ name: 'recipe', params: { id: cleanId } })
+  router.push({ name: "recipe", params: { id: props.recipe._id } });
 }
 
-defineEmits<{
-  (e: 'toggle-save', id: string): void
-}>()
+function handleImageError(event: Event) {
+  const target = event.target as HTMLImageElement;
+  target.src = fallbackImage;
+}
 </script>
 
 <style scoped lang="scss">
@@ -136,14 +160,12 @@ defineEmits<{
   gap: 10px;
 }
 
-/* Only layout sizing for the BaseButton */
 .card__view {
   flex: 1;
   height: 34px;
   font-size: 13px;
 }
 
-/* Icon button stays local to this card */
 .saveBtn {
   width: 34px;
   height: 34px;
@@ -152,7 +174,6 @@ defineEmits<{
   background: #fff;
   color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
-
   display: grid;
   place-items: center;
 }
@@ -164,11 +185,4 @@ defineEmits<{
 .saveBtn:hover {
   border-color: rgba(0, 0, 0, 0.25);
 }
-
-.saveBtn.is-saved {
-  background: var(--accent);
-  color: var(--text);
-  border-color: var(--accent);
-}
-
 </style>

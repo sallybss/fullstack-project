@@ -6,87 +6,57 @@
       </HeroSection>
 
       <section class="section">
-        <div class="section__top">
-          <CategoryChips :items="categories" v-model="selectedCategory" />
-          <SortSelect v-model="sortBy" />
+        <div v-if="loading" class="empty-state">
+          <h2>Loading recipes...</h2>
         </div>
 
-        <RecipeGrid v-if="pagedRecipes.length">
-          <RecipeCard
-            v-for="recipe in pagedRecipes"
-            :key="recipe.id"
-            :recipe="recipe"
-            @toggle-save="toggleSave"
-          />
-        </RecipeGrid>
+        <div v-else-if="error" class="empty-state">
+          <h2>Something went wrong</h2>
+          <p>{{ error }}</p>
+        </div>
 
-        <div v-else class="empty-state">
+        <div v-else-if="filteredRecipes.length === 0" class="empty-state">
           <h2>No recipes found</h2>
-          <p>
-            There are no recipes in
-            <strong>{{ selectedCategory }}</strong>
-            <span v-if="query"> matching “{{ query }}”</span>.
-          </p>
+          <p>No recipes match your search.</p>
         </div>
 
-        <PaginationBar
-          v-if="filteredRecipes.length > 0"
-          :page="page"
-          :page-size="pageSize"
-          :total="filteredRecipes.length"
-          @update:page="page = $event"
-        />
+        <div v-else class="recipe-list">
+          <RecipeGrid>
+            <RecipeCard
+              v-for="recipe in filteredRecipes"
+              :key="recipe._id"
+              :recipe="recipe"
+            />
+          </RecipeGrid>
+        </div>
       </section>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
+import { useRecipes } from "../modules/useRecipes";
 
-import PaginationBar from "../components/common/PaginationBar.vue";
 import HeroSearch from "../components/home/HeroSearch.vue";
 import HeroSection from "../components/common/HeroSection.vue";
-import CategoryChips from "../components/home/CategoryChips.vue";
-import SortSelect from "../components/home/SortSelect.vue";
 import RecipeGrid from "../components/recipes/RecipeGrid.vue";
 import RecipeCard from "../components/recipes/RecipeCard.vue";
 
-import { useRecipes } from "../composables/useRecipes";
-import type { RecipeCategory } from "../types/recipe";
-
-const { recipes, categories, toggleSave } = useRecipes();
-
 const query = ref("");
-const selectedCategory = ref<RecipeCategory>("Desserts");
-const sortBy = ref<"newest" | "rating" | "time">("newest");
 
-const page = ref(1);
-const pageSize = 12;
+const { recipes, loading, error, fetchRecipes } = useRecipes();
+
+onMounted(() => {
+  fetchRecipes();
+});
 
 const filteredRecipes = computed(() => {
   const q = query.value.trim().toLowerCase();
 
-  return recipes.value
-    .filter((r) =>
-      selectedCategory.value ? r.category === selectedCategory.value : true,
-    )
-    .filter((r) => (q ? r.title.toLowerCase().includes(q) : true))
-    .slice()
-    .sort((a, b) => {
-      if (sortBy.value === "newest") return b.createdAt - a.createdAt;
-      if (sortBy.value === "rating") return b.rating - a.rating;
-      return a.timeMinutes - b.timeMinutes;
-    });
-});
-
-watch([query, selectedCategory, sortBy], () => {
-  page.value = 1;
-});
-
-const pagedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return filteredRecipes.value.slice(start, start + pageSize);
+  return recipes.value.filter((recipe) =>
+    recipe.title.toLowerCase().includes(q),
+  );
 });
 </script>
 
@@ -106,12 +76,26 @@ const pagedRecipes = computed(() => {
   margin: 0 auto 64px;
 }
 
-.section__top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 18px 0 18px;
+.recipe-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.recipe-item {
+  background: white;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.recipe-item h2 {
+  margin-bottom: 10px;
+}
+
+.recipe-item p {
+  margin-bottom: 8px;
+  color: #444;
 }
 
 .empty-state {

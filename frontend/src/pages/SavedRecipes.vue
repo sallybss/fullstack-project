@@ -8,79 +8,20 @@
       </HeroSection>
 
       <section class="section">
-        <div class="section__top">
-          <CategoryChips :items="categories" v-model="selectedCategory" />
-          <SortSelect v-model="sortBy" />
+        <div class="empty-state">
+          <h2>Saved recipes coming soon</h2>
+          <p>
+            This page will be connected after the backend recipe list works
+            correctly.
+          </p>
         </div>
-
-        <RecipeGrid v-if="pagedSavedRecipes.length">
-          <RecipeCard
-            v-for="recipe in pagedSavedRecipes"
-            :key="recipe.id"
-            :recipe="recipe"
-            @toggle-save="toggleSave"
-          />
-        </RecipeGrid>
-
-        <div v-else class="empty-state">
-          <h2>No saved recipes yet</h2>
-          <p>Your saved recipes will appear here.</p>
-        </div>
-
-        <PaginationBar
-          v-if="filteredSavedRecipes.length > 0"
-          :page="page"
-          :page-size="pageSize"
-          :total="filteredSavedRecipes.length"
-          @update:page="page = $event"
-        />
       </section>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
-
-import PaginationBar from "../components/common/PaginationBar.vue";
 import HeroSection from "../components/common/HeroSection.vue";
-import CategoryChips from "../components/home/CategoryChips.vue";
-import SortSelect from "../components/home/SortSelect.vue";
-import RecipeGrid from "../components/recipes/RecipeGrid.vue";
-import RecipeCard from "../components/recipes/RecipeCard.vue";
-
-import { useRecipes } from "../composables/useRecipes";
-import type { RecipeCategory } from "../types/recipe";
-
-const { savedRecipes, categories, toggleSave } = useRecipes();
-
-const selectedCategory = ref<RecipeCategory>("Desserts");
-const sortBy = ref<"newest" | "rating" | "time">("newest");
-
-const page = ref(1);
-const pageSize = 12;
-
-const filteredSavedRecipes = computed(() => {
-  return savedRecipes.value
-    .filter((r) =>
-      selectedCategory.value ? r.category === selectedCategory.value : true
-    )
-    .slice()
-    .sort((a, b) => {
-      if (sortBy.value === "newest") return b.createdAt - a.createdAt;
-      if (sortBy.value === "rating") return b.rating - a.rating;
-      return a.timeMinutes - b.timeMinutes;
-    });
-});
-
-watch([selectedCategory, sortBy], () => {
-  page.value = 1;
-});
-
-const pagedSavedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return filteredSavedRecipes.value.slice(start, start + pageSize);
-});
 </script>
 
 <style scoped lang="scss">

@@ -21,6 +21,7 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 const allowedOrigins = new Set<string>([
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:4000",
   // Add Render frontend later:
   // "https://your-frontend.onrender.com",
