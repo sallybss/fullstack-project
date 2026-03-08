@@ -36,6 +36,7 @@
             :key="recipe._id"
             :recipe="recipe"
             @auth-required="openAuthModal"
+            @save-click="toggleSave"
           />
         </RecipeGrid>
       </section>
@@ -94,7 +95,7 @@ const router = useRouter();
 const query = ref("");
 const showAuthModal = ref(false);
 
-const { recipes, loading, error, fetchRecipes } = useRecipes();
+const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
 const { isLoggedIn } = useUser();
 
 onMounted(() => {

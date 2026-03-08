@@ -1,9 +1,18 @@
 <template>
   <div class="page">
-    <HeroSection v-if="recipe" :imageUrl="recipe.imageUrl"></HeroSection>
+    <HeroSection v-if="recipe" :imageUrl="recipe.imageUrl || fallbackImage" />
 
     <main class="container">
-      <div v-if="!recipe" class="recipe-card">
+      <div v-if="loading" class="recipe-card">
+        <p>Loading recipe...</p>
+      </div>
+
+      <div v-else-if="error" class="recipe-card">
+        <RouterLink to="/" class="back">← Go back</RouterLink>
+        <p style="margin-top: 12px">{{ error }}</p>
+      </div>
+
+      <div v-else-if="!recipe" class="recipe-card">
         <RouterLink to="/" class="back">← Go back</RouterLink>
         <p style="margin-top: 12px">Recipe not found.</p>
       </div>
@@ -25,9 +34,10 @@
           <div class="other-grid">
             <RecipeCard
               v-for="r in otherRecipes"
-              :key="r.id"
+              :key="r._id"
               :recipe="r"
-              @toggle-save="() => {}"
+              @auth-required="() => {}"
+              @save-click="toggleSave"
             />
           </div>
         </section>
@@ -37,60 +47,45 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { mockRecipes } from "../../data/mockRecipes";
-import type { Recipe } from "../../types/recipe";
+import { useRecipes } from "../../modules/useRecipes";
 
 import RecipeDetails from "../../components/recipes/RecipeDetails.vue";
 import HeroSection from "../../components/common/HeroSection.vue";
 import RecipeCard from "../../components/recipes/RecipeCard.vue";
 
-/**
- * Helpers
- * Build fake recipes until API is ready
- */
-function buildDemoRecipes(times = 10): Recipe[] {
-  const result: Recipe[] = [];
-
-  for (let t = 0; t < times; t++) {
-    for (const r of mockRecipes) {
-      result.push({
-        ...r,
-        id: `${r.id}-${t}`,
-        title: `${r.title} ${t + 1}`,
-        createdAt: r.createdAt - t * 86400000,
-      });
-    }
-  }
-
-  return result;
-}
-
-const allRecipes = ref<Recipe[]>(buildDemoRecipes(10));
-
 const route = useRoute();
 const router = useRouter();
+
+const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
+
+const fallbackImage = "https://picsum.photos/seed/recipe/1200/700";
+
+// Read recipe id from URL: /recipes/:id
+const recipeId = computed(() => String(route.params.id));
+
+onMounted(async () => {
+  // Fetch recipes only if they are not already loaded
+  if (recipes.value.length === 0) {
+    await fetchRecipes();
+  }
+});
 
 function goBack() {
   router.back();
 }
 
-const recipeId = computed(() => String(route.params.id));
-
+// Find the current recipe by backend _id
 const recipe = computed(() =>
-  allRecipes.value.find((r) => r.id.startsWith(recipeId.value)),
+  recipes.value.find((r) => r._id === recipeId.value),
 );
 
+// Show up to 4 other recipes excluding the current one
 const otherRecipes = computed(() =>
-  allRecipes.value.filter((r) => !r.id.startsWith(recipeId.value)).slice(0, 4),
+  recipes.value.filter((r) => r._id !== recipeId.value).slice(0, 4),
 );
-
-function toggleSave(id: string) {
-  const r = allRecipes.value.find((x) => x.id === id);
-  if (r) r.saved = !r.saved;
-}
 </script>
 
 <style scoped>
@@ -107,7 +102,6 @@ function toggleSave(id: string) {
   z-index: 2;
 }
 
-/* Recipe not found card */
 .recipe-card {
   background: #fff;
   border-radius: 18px;
@@ -130,6 +124,7 @@ function toggleSave(id: string) {
 .section {
   margin-top: 22px;
 }
+
 .other-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
