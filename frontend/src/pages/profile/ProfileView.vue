@@ -1,69 +1,3 @@
-<script setup lang="ts">
-import { computed, ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
-
-import HeroSection from "../../components/common/HeroSection.vue";
-import RecipeCard from "../../components/recipes/RecipeCard.vue";
-import BaseButton from "../../components/common/BaseButton.vue";
-import PaginationBar from "../../components/common/PaginationBar.vue";
-
-import { mockRecipes } from "../../data/mockRecipes";
-import type { Recipe } from "../../types/recipe";
-
-const route = useRoute();
-const router = useRouter();
-
-function goBack() {
-  router.back();
-}
-
-/** Profile id from url */
-const profileId = computed(() => String(route.params.id || ""));
-
-/** Demo: filter recipes by author id */
-const allRecipes = ref<Recipe[]>(
-  mockRecipes.map((r) => ({ ...r, saved: r.saved ?? false })),
-);
-
-const userRecipes = computed(() =>
-  allRecipes.value.filter((r) => r.author?.id === profileId.value),
-);
-
-/** Use first recipe author data as profile header */
-const profile = computed(() => {
-  const first = userRecipes.value[0];
-  return (
-    first?.author ?? {
-      id: profileId.value,
-      name: "Unknown",
-      email: "",
-      initials: "U",
-    }
-  );
-});
-
-/** Follow state (demo) */
-const isFollowing = ref(false);
-function toggleFollow() {
-  isFollowing.value = !isFollowing.value;
-}
-
-/** Pagination */
-const pageSize = 8; // 2 rows of 4
-const page = ref(1);
-
-const pagedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return userRecipes.value.slice(start, start + pageSize);
-});
-
-/** Save toggle (if your RecipeCard emits @toggle-save) */
-function toggleSave(id: string) {
-  const r = allRecipes.value.find((x) => x.id === id);
-  if (r) r.saved = !r.saved;
-}
-</script>
-
 <template>
   <div class="page">
     <HeroSection imageUrl="https://picsum.photos/seed/profilehero/1400/700" />
@@ -72,69 +6,151 @@ function toggleSave(id: string) {
       <div class="profile-card">
         <button class="back" type="button" @click="goBack">← Go back</button>
 
-        <!-- header -->
-        <div class="profile-top">
-          <div class="left">
-            <div class="avatar">{{ profile.initials }}</div>
-
-            <div class="meta">
-              <h1 class="name">{{ profile.name }}</h1>
-              <p class="sub">Member since January 2025 · 12 recipes posted</p>
-            </div>
-          </div>
-
-          <div class="right">
-            <BaseButton
-              :variant="isFollowing ? 'outline' : 'primary'"
-              type="button"
-              @click="toggleFollow"
-            >
-              {{ isFollowing ? "Following" : "Follow" }}
-            </BaseButton>
-
-            <div class="stat">
-              <i class="pi pi-users"></i>
-              <span><b>5</b> followers</span>
-            </div>
-
-            <div class="stat">
-              <i class="pi pi-book"></i>
-              <span
-                ><b>{{ userRecipes.length }}</b> recipes</span
-              >
-            </div>
-          </div>
+        <div v-if="loading" class="empty-state">
+          <h2>Loading profile...</h2>
         </div>
 
-        <p class="bio">
-          Passionate home chef exploring flavors from around the world. I love
-          creating simple yet elegant dishes that bring people together.
-        </p>
+        <div v-else-if="error" class="empty-state">
+          <h2>Something went wrong</h2>
+          <p>{{ error }}</p>
+        </div>
 
-        <!-- grid -->
-        <section class="section">
-          <div class="grid">
-            <RecipeCard
-              v-for="r in pagedRecipes"
-              :key="r.id"
-              :recipe="r"
-              @toggle-save="toggleSave"
-            />
+        <template v-else>
+          <div class="profile-top">
+            <div class="left">
+              <div class="avatar">{{ ownerInitial }}</div>
+
+              <div class="meta">
+                <h1 class="name">{{ profileName }}</h1>
+                <p class="sub">
+                  Member profile · <b>{{ userRecipes.length }}</b> recipes posted
+                </p>
+              </div>
+            </div>
+
+            <div class="right">
+              <BaseButton
+                :variant="isFollowing ? 'outline' : 'primary'"
+                type="button"
+                @click="toggleFollow"
+              >
+                {{ isFollowing ? "Following" : "Follow" }}
+              </BaseButton>
+
+              <div class="stat">
+                <i class="pi pi-users"></i>
+                <span><b>5</b> followers</span>
+              </div>
+
+              <div class="stat">
+                <i class="pi pi-book"></i>
+                <span><b>{{ userRecipes.length }}</b> recipes</span>
+              </div>
+            </div>
           </div>
 
-          <!-- pagination -->
-          <div class="pager" v-if="userRecipes.length > pageSize">
-            <PaginationBar
-              v-model:page="page"
-              :pageSize="pageSize"
-              :total="userRecipes.length"
-            />
-          </div>
-        </section>
+          <p class="bio">
+            {{ profileBio }}
+          </p>
+
+          <section class="section">
+            <div v-if="pagedRecipes.length === 0" class="empty-state">
+              <h2>No recipes yet</h2>
+              <p>This user has not published any recipes yet.</p>
+            </div>
+
+            <div v-else class="grid">
+              <RecipeCard
+                v-for="r in pagedRecipes"
+                :key="r._id"
+                :recipe="r"
+                @auth-required="() => {}"
+                @save-click="toggleSave"
+              />
+            </div>
+
+            <div class="pager" v-if="userRecipes.length > pageSize">
+              <PaginationBar
+                v-model:page="page"
+                :pageSize="pageSize"
+                :total="userRecipes.length"
+              />
+            </div>
+          </section>
+        </template>
       </div>
     </main>
   </div>
 </template>
+
+<script setup lang="ts">
+import { computed, onMounted, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
+
+import HeroSection from "../../components/common/HeroSection.vue";
+import RecipeCard from "../../components/recipes/RecipeCard.vue";
+import BaseButton from "../../components/common/BaseButton.vue";
+import PaginationBar from "../../components/common/PaginationBar.vue";
+
+import { useRecipes } from "../../modules/useRecipes";
+
+const route = useRoute();
+const router = useRouter();
+
+const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
+
+function goBack() {
+  router.back();
+}
+
+// Read profile id from route
+const profileId = computed(() => String(route.params.id || ""));
+
+onMounted(async () => {
+  if (recipes.value.length === 0) {
+    await fetchRecipes();
+  }
+});
+
+// Filter recipes that belong to the current owner
+const userRecipes = computed(() =>
+  recipes.value.filter((r) => r.owner?._id === profileId.value),
+);
+
+// Use first recipe owner as profile source
+const profile = computed(() => {
+  return userRecipes.value[0]?.owner ?? null;
+});
+
+const profileName = computed(() => {
+  return profile.value?.username ?? "Unknown";
+});
+
+const profileBio = computed(() => {
+  return profile.value?.bio || "This user has not added a bio yet.";
+});
+
+const ownerInitial = computed(() => {
+  const username = profile.value?.username ?? "U";
+  return username.charAt(0).toUpperCase();
+});
+
+// Demo follow state
+const isFollowing = ref(false);
+
+function toggleFollow() {
+  isFollowing.value = !isFollowing.value;
+}
+
+// Pagination
+const pageSize = 8;
+const page = ref(1);
+
+const pagedRecipes = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return userRecipes.value.slice(start, start + pageSize);
+});
+</script>
 
 <style scoped>
 /* same base layout */

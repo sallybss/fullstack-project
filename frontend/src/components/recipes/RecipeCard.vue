@@ -39,11 +39,13 @@
 
       <button
         class="saveBtn"
-        type="button"
-        aria-label="Save recipe"
+        :class="{ 'saveBtn--active': recipe.saved }"
         @click="handleSaveClick"
       >
-        <i class="pi pi-bookmark"></i>
+        <i
+          class="pi"
+          :class="recipe.saved ? 'pi-bookmark-fill' : 'pi-bookmark'"
+        ></i>
       </button>
     </div>
   </article>
@@ -198,10 +200,10 @@ function handleImageError(event: Event) {
   place-items: center;
   width: 34px;
   height: 34px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
   border-radius: 999px;
-  background: #fff;
-  color: rgba(0, 0, 0, 0.6);
+  background: var(--text);
+  color: var(--accent);
+  border: 1px solid #ff734c53;
   cursor: pointer;
 }
 
@@ -210,6 +212,7 @@ function handleImageError(event: Event) {
 }
 
 .saveBtn:hover {
-  border-color: rgba(0, 0, 0, 0.25);
+  border-color: #ff734c;
+;
 }
 </style>

@@ -22,10 +22,10 @@ withDefaults(
 
 <style scoped>
 .btn {
-  height: 48px;
+  height: 40px;
   padding: 0 24px;
   border-radius: 999px;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 1px;
   cursor: pointer;

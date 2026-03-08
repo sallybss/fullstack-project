@@ -8,20 +8,42 @@
       </HeroSection>
 
       <section class="section">
-        <div class="empty-state">
-          <h2>Saved recipes coming soon</h2>
-          <p>
-            This page will be connected after the backend recipe list works
-            correctly.
-          </p>
+        <div v-if="savedRecipes.length === 0" class="empty-state">
+          <h2>No saved recipes yet</h2>
+          <p>Your saved recipes will appear here.</p>
         </div>
+
+        <RecipeGrid v-else>
+          <RecipeCard
+            v-for="recipe in savedRecipes"
+            :key="recipe._id"
+            :recipe="recipe"
+            @save-click="toggleSave"
+          />
+        </RecipeGrid>
       </section>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, onMounted } from "vue";
 import HeroSection from "../components/common/HeroSection.vue";
+import RecipeGrid from "../components/recipes/RecipeGrid.vue";
+import RecipeCard from "../components/recipes/RecipeCard.vue";
+import { useRecipes } from "../modules/useRecipes";
+
+const { recipes, fetchRecipes, toggleSave } = useRecipes();
+
+onMounted(() => {
+  if (recipes.value.length === 0) {
+    fetchRecipes();
+  }
+});
+
+const savedRecipes = computed(() => {
+  return recipes.value.filter((recipe) => recipe.saved);
+});
 </script>
 
 <style scoped lang="scss">

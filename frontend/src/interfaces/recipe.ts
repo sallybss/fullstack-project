@@ -16,4 +16,12 @@ export type Recipe = {
     average: number;
     count: number;
   };
+  saved?: boolean;
+  
+  owner?: {
+    _id: string;
+    username: string;
+    bio?: string;
+    avatarUrl?: string;
+  };
 }

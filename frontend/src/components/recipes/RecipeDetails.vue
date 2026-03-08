@@ -9,14 +9,11 @@
 
     <div class="authorRow">
       <div class="author">
-        <Avatar
-          :label="recipe.author?.initials ?? 'U'"
-          shape="circle"
-          class="avatar"
-        />
+        <Avatar :label="ownerInitial" shape="circle" class="avatar" />
+
         <div>
-          <div class="authorName">{{ recipe.author?.name ?? "Unknown" }}</div>
-          <div class="authorEmail">{{ recipe.author?.email ?? "" }}</div>
+          <div class="authorName">{{ recipe.owner?.username ?? "Unknown" }}</div>
+          <div class="authorEmail">{{ recipe.owner?.bio ?? "" }}</div>
         </div>
       </div>
 
@@ -29,11 +26,13 @@
         >
           View profile
         </BaseButton>
-        <BaseButton variant="primary" class="actionBtn">Follow</BaseButton>
+
+        <BaseButton variant="primary" class="actionBtn" type="button">
+          Follow
+        </BaseButton>
       </div>
     </div>
 
-    <!-- title + save -->
     <div class="titleRow">
       <h1 class="title">{{ recipe.title }}</h1>
 
@@ -41,18 +40,20 @@
         class="saveBtn"
         type="button"
         :class="{ 'is-saved': recipe.saved }"
-        @click="$emit('toggle-save', recipe.id)"
+        @click="$emit('toggle-save', recipe._id)"
         aria-label="Save recipe"
       >
-        <i class="pi pi-bookmark"></i>
+        <i
+          class="pi"
+          :class="recipe.saved ? 'pi-bookmark-fill' : 'pi-bookmark'"
+        ></i>
       </button>
     </div>
 
-    <!-- meta -->
     <div class="meta">
       <span class="metaItem">
         <i class="pi pi-clock"></i>
-        {{ recipe.timeMinutes }} min
+        {{ totalTime }} min
       </span>
 
       <span class="metaItem" v-if="recipe.servings">
@@ -61,21 +62,15 @@
       </span>
 
       <span class="metaItem rating">
-        <Rating
-          :modelValue="Math.round(recipe.rating)"
-          :cancel="false"
-          readonly
-        />
-        <span class="count">({{ recipe.ratingCount }})</span>
+        <Rating :modelValue="roundedRating" :cancel="false" readonly />
+        <span class="count">({{ ratingCount }})</span>
       </span>
     </div>
 
-    <!-- description -->
     <p class="desc">
-      {{ recipe.description ?? "No description yet." }}
+      {{ recipe.description || "No description yet." }}
     </p>
 
-    <!-- two columns -->
     <div class="grid">
       <section class="panel">
         <h2>Ingredients</h2>
@@ -110,21 +105,57 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+import { useRouter } from "vue-router";
 import Avatar from "primevue/avatar";
 import Rating from "primevue/rating";
-import { useRouter } from "vue-router";
-import type { Recipe } from "../../types/recipe";
 import BaseButton from "../common/BaseButton.vue";
+import type { Recipe } from "../../interfaces/recipe";
 
-const props = defineProps<{ recipe: Recipe }>();
+const props = defineProps<{
+  recipe: Recipe;
+}>();
+
+defineEmits<{
+  (e: "back"): void;
+  (e: "toggle-save", id: string): void;
+}>();
 
 const router = useRouter();
 
-function goToProfile() {
-  const id = props.recipe.author?.id;
-  if (!id) return;
+// Combine prep + cook time because backend stores them separately
+const totalTime = computed(() => {
+  return props.recipe.prepTimeMinutes + props.recipe.cookTimeMinutes;
+});
 
-  router.push({ name: "profile", params: { id } });
+// Backend rating comes from ratingSummary
+const averageRating = computed(() => {
+  return props.recipe.ratingSummary?.average ?? 0;
+});
+
+const roundedRating = computed(() => {
+  return Math.round(averageRating.value);
+});
+
+const ratingCount = computed(() => {
+  return props.recipe.ratingSummary?.count ?? 0;
+});
+
+// Build a simple avatar label from the owner username
+const ownerInitial = computed(() => {
+  const username = props.recipe.owner?.username ?? "U";
+  return username.charAt(0).toUpperCase();
+});
+
+// Opens the profile page of the recipe owner
+function goToProfile() {
+  const ownerId = props.recipe.owner?._id;
+  if (!ownerId) return;
+
+  router.push({
+    name: "profile",
+    params: { id: ownerId },
+  });
 }
 </script>
 
@@ -139,6 +170,7 @@ function goToProfile() {
   display: flex;
   align-items: center;
 }
+
 .back {
   display: inline-flex;
   align-items: center;
@@ -157,18 +189,22 @@ function goToProfile() {
   gap: 16px;
   margin-top: 12px;
 }
+
 .author {
   display: flex;
   align-items: center;
   gap: 12px;
 }
+
 .avatar {
   width: 40px;
   height: 40px;
 }
+
 .authorName {
   font-weight: 700;
 }
+
 .authorEmail {
   color: #8a8a8a;
   font-size: 13px;
@@ -179,23 +215,17 @@ function goToProfile() {
   display: flex;
   gap: 12px;
 }
-.actionBtn {
-  height: 34px;
-  padding: 0 16px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.6px;
-}
+
+
 
 .saveBtn {
   width: 38px;
   height: 38px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
+  border: 1px solid #ff734c53;
   background: #fff;
-  color: rgba(0, 0, 0, 0.6);
+  color: var(--accent);
   cursor: pointer;
-
   display: grid;
   place-items: center;
 }
@@ -205,13 +235,13 @@ function goToProfile() {
 }
 
 .saveBtn:hover {
-  border-color: rgba(0, 0, 0, 0.25);
+  border-color: var(--accent);
 }
 
-.saveBtn.is-saved {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
+.saveBtn.is-saved {  
+  background: var(--text);
+  color: var(--accent);
+  border: 1px solid #ff734c53;
 }
 
 .titleRow {
@@ -221,6 +251,7 @@ function goToProfile() {
   gap: 16px;
   margin-top: 14px;
 }
+
 .title {
   margin: 0;
   font-size: 44px;
@@ -236,14 +267,17 @@ function goToProfile() {
   color: #777;
   font-size: 14px;
 }
+
 .metaItem {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
+
 .rating {
   gap: 10px;
 }
+
 .count {
   color: #777;
 }
@@ -261,11 +295,13 @@ function goToProfile() {
   gap: 22px;
   margin-top: 18px;
 }
+
 .panel {
   border: 1px solid #f0f0f0;
   border-radius: 18px;
   padding: 18px;
 }
+
 .panel h2 {
   margin: 0 0 12px;
   font-size: 20px;
@@ -278,12 +314,14 @@ function goToProfile() {
   display: grid;
   gap: 12px;
 }
+
 .li {
   display: flex;
   align-items: center;
   gap: 12px;
   color: #666;
 }
+
 .dot {
   width: 18px;
   height: 18px;
@@ -299,6 +337,7 @@ function goToProfile() {
   gap: 10px;
   color: #666;
 }
+
 .empty {
   color: #999;
 }
@@ -307,9 +346,11 @@ function goToProfile() {
   .title {
     font-size: 34px;
   }
+
   .grid {
     grid-template-columns: 1fr;
   }
+
   .actions {
     flex-wrap: wrap;
     justify-content: flex-end;
