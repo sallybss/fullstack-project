@@ -18,7 +18,7 @@
       <div class="card__rating">
         <span class="stars" aria-hidden="true">
           <span v-for="n in 5" :key="n" class="star">
-            {{ n <= Math.round(averageRating) ? "★" : "☆" }}
+            {{ n <= roundedRating ? "★" : "☆" }}
           </span>
         </span>
         <span class="ratingCount">({{ ratingCount }})</span>
@@ -32,12 +32,17 @@
         variant="outline"
         class="card__view"
         type="button"
-        @click="goToRecipe"
+        @click="handleViewClick"
       >
         View
       </BaseButton>
 
-      <button class="saveBtn" type="button" aria-label="Save recipe">
+      <button
+        class="saveBtn"
+        type="button"
+        aria-label="Save recipe"
+        @click="handleSaveClick"
+      >
         <i class="pi pi-bookmark"></i>
       </button>
     </div>
@@ -49,31 +54,64 @@ import { computed } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "../common/BaseButton.vue";
 import type { Recipe } from "../../interfaces/recipe";
+import { useUser } from "../../modules/auth/useUser";
 
 const router = useRouter();
+const { isLoggedIn } = useUser();
 
 const props = defineProps<{
   recipe: Recipe;
 }>();
 
+const emit = defineEmits<{
+  (e: "auth-required"): void;
+  (e: "save-click", recipeId: string): void;
+}>();
+
 const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
 
+// Combines prep and cook time for a single display value
 const totalTime = computed(() => {
   return props.recipe.prepTimeMinutes + props.recipe.cookTimeMinutes;
 });
 
+// Uses backend rating summary if available
 const averageRating = computed(() => {
   return props.recipe.ratingSummary?.average ?? 0;
+});
+
+const roundedRating = computed(() => {
+  return Math.round(averageRating.value);
 });
 
 const ratingCount = computed(() => {
   return props.recipe.ratingSummary?.count ?? 0;
 });
 
-function goToRecipe() {
-  router.push({ name: "recipe", params: { id: props.recipe._id } });
+// Guests can browse cards, but protected actions trigger auth modal
+function handleViewClick() {
+  if (!isLoggedIn.value) {
+    emit("auth-required");
+    return;
+  }
+
+  router.push({
+    name: "recipe",
+    params: { id: props.recipe._id },
+  });
 }
 
+// Save action is also protected for guests
+function handleSaveClick() {
+  if (!isLoggedIn.value) {
+    emit("auth-required");
+    return;
+  }
+
+  emit("save-click", props.recipe._id);
+}
+
+// Falls back to a placeholder if image URL is broken
 function handleImageError(event: Event) {
   const target = event.target as HTMLImageElement;
   target.src = fallbackImage;
@@ -81,30 +119,24 @@ function handleImageError(event: Event) {
 </script>
 
 <style scoped lang="scss">
-.section {
-  margin-top: 22px;
-  padding-bottom: 24px;
-}
-
 .card {
   display: grid;
   gap: 10px;
   width: 100%;
-  max-width: none;
 }
 
 .card__imageWrap {
-  border-radius: 18px;
   overflow: hidden;
+  border-radius: 18px;
   background: #eee;
   aspect-ratio: 1 / 1;
 }
 
 .card__image {
+  display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
 
 .card__meta {
@@ -116,7 +148,8 @@ function handleImageError(event: Event) {
   color: rgba(0, 0, 0, 0.55);
 }
 
-.card__time {
+.card__time,
+.card__rating {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -125,12 +158,6 @@ function handleImageError(event: Event) {
 .card__clock {
   font-size: 12px;
   opacity: 0.7;
-}
-
-.card__rating {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
 }
 
 .stars {
@@ -167,15 +194,15 @@ function handleImageError(event: Event) {
 }
 
 .saveBtn {
+  display: grid;
+  place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 999px;
   border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
   background: #fff;
   color: rgba(0, 0, 0, 0.6);
   cursor: pointer;
-  display: grid;
-  place-items: center;
 }
 
 .saveBtn .pi {

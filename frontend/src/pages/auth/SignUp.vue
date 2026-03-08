@@ -169,7 +169,7 @@ async function onSubmit() {
   height: 48px;
   border-radius: 999px;
   border: 1px solid var(--stroke);
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(89, 89, 89, 0.25);
   padding: 0 18px;
   color: var(--text);
   outline: none;
@@ -185,7 +185,7 @@ async function onSubmit() {
 
 .auth__footer {
   margin: 0;
-  color: var(--muted);
+  color: #ffffff;
   font-size: 14px;
 }
 
