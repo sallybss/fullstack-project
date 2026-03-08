@@ -6,88 +6,138 @@
       </HeroSection>
 
       <section class="section">
-        <div class="section__top">
-          <CategoryChips :items="categories" v-model="selectedCategory" />
-          <SortSelect v-model="sortBy" />
+        <div class="section__actions">
+          <BaseButton
+            variant="primary"
+            type="button"
+            @click="handleAddRecipeClick"
+          >
+            Add Recipe
+          </BaseButton>
         </div>
 
-        <RecipeGrid v-if="pagedRecipes.length">
+        <div v-if="loading" class="empty-state">
+          <h2>Loading recipes...</h2>
+        </div>
+
+        <div v-else-if="error" class="empty-state">
+          <h2>Something went wrong</h2>
+          <p>{{ error }}</p>
+        </div>
+
+        <div v-else-if="filteredRecipes.length === 0" class="empty-state">
+          <h2>No recipes found</h2>
+          <p>No recipes match your search.</p>
+        </div>
+
+        <RecipeGrid v-else>
           <RecipeCard
-            v-for="recipe in pagedRecipes"
-            :key="recipe.id"
+            v-for="recipe in filteredRecipes"
+            :key="recipe._id"
             :recipe="recipe"
-            @toggle-save="toggleSave"
+            @auth-required="openAuthModal"
           />
         </RecipeGrid>
-
-        <div v-else class="empty-state">
-          <h2>No recipes found</h2>
-          <p>
-            There are no recipes in
-            <strong>{{ selectedCategory }}</strong>
-            <span v-if="query"> matching “{{ query }}”</span>.
-          </p>
-        </div>
-
-        <PaginationBar
-          v-if="filteredRecipes.length > 0"
-          :page="page"
-          :page-size="pageSize"
-          :total="filteredRecipes.length"
-          @update:page="page = $event"
-        />
       </section>
     </main>
+
+    <div
+      v-if="showAuthModal"
+      class="auth-modal-overlay"
+      @click.self="closeAuthModal"
+    >
+      <div class="auth-modal">
+        <button
+          class="auth-modal__closeBtn"
+          type="button"
+          aria-label="Close"
+          @click="closeAuthModal"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+
+        <h2 class="auth-modal__title">You are not logged in</h2>
+
+        <p class="auth-modal__text">
+          You need an account to perform this action.
+        </p>
+
+        <div class="auth-modal__actions">
+          <BaseButton variant="outline" type="button" @click="goToSignIn">
+            Sign In
+          </BaseButton>
+
+          <BaseButton variant="primary" type="button" @click="goToSignUp">
+            Sign Up
+          </BaseButton>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
+import { useRouter } from "vue-router";
 
-import PaginationBar from "../components/common/PaginationBar.vue";
+import { useRecipes } from "../modules/useRecipes";
+import { useUser } from "../modules/auth/useUser";
+
 import HeroSearch from "../components/home/HeroSearch.vue";
 import HeroSection from "../components/common/HeroSection.vue";
-import CategoryChips from "../components/home/CategoryChips.vue";
-import SortSelect from "../components/home/SortSelect.vue";
 import RecipeGrid from "../components/recipes/RecipeGrid.vue";
 import RecipeCard from "../components/recipes/RecipeCard.vue";
+import BaseButton from "../components/common/BaseButton.vue";
 
-import { useRecipes } from "../composables/useRecipes";
-import type { RecipeCategory } from "../types/recipe";
-
-const { recipes, categories, toggleSave } = useRecipes();
+const router = useRouter();
 
 const query = ref("");
-const selectedCategory = ref<RecipeCategory>("Desserts");
-const sortBy = ref<"newest" | "rating" | "time">("newest");
+const showAuthModal = ref(false);
 
-const page = ref(1);
-const pageSize = 12;
+const { recipes, loading, error, fetchRecipes } = useRecipes();
+const { isLoggedIn } = useUser();
 
+onMounted(() => {
+  fetchRecipes();
+});
+
+// Filters recipes by title using the hero search input
 const filteredRecipes = computed(() => {
-  const q = query.value.trim().toLowerCase();
+  const normalizedQuery = query.value.trim().toLowerCase();
 
-  return recipes.value
-    .filter((r) =>
-      selectedCategory.value ? r.category === selectedCategory.value : true,
-    )
-    .filter((r) => (q ? r.title.toLowerCase().includes(q) : true))
-    .slice()
-    .sort((a, b) => {
-      if (sortBy.value === "newest") return b.createdAt - a.createdAt;
-      if (sortBy.value === "rating") return b.rating - a.rating;
-      return a.timeMinutes - b.timeMinutes;
-    });
+  return recipes.value.filter((recipe) =>
+    recipe.title.toLowerCase().includes(normalizedQuery),
+  );
 });
 
-watch([query, selectedCategory, sortBy], () => {
-  page.value = 1;
-});
+// Protected action: only logged-in users can add a recipe
+function handleAddRecipeClick() {
+  if (!isLoggedIn.value) {
+    openAuthModal();
+    return;
+  }
 
-const pagedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return filteredRecipes.value.slice(start, start + pageSize);
-});
+  router.push("/add-recipe");
+}
+
+// Opens the guest modal when a protected action is triggered
+function openAuthModal() {
+  showAuthModal.value = true;
+}
+
+function closeAuthModal() {
+  showAuthModal.value = false;
+}
+
+function goToSignIn() {
+  closeAuthModal();
+  router.push("/signin");
+}
+
+function goToSignUp() {
+  closeAuthModal();
+  router.push("/signup");
+}
 </script>
 
 <style scoped lang="scss">
@@ -106,12 +156,10 @@ const pagedRecipes = computed(() => {
   margin: 0 auto 64px;
 }
 
-.section__top {
+.section__actions {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin: 18px 0 18px;
+  justify-content: flex-end;
+  margin-bottom: 24px;
 }
 
 .empty-state {
@@ -128,5 +176,79 @@ const pagedRecipes = computed(() => {
 
 .empty-state p {
   color: #666;
+}
+
+.auth-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.auth-modal {
+  position: relative;
+  width: min(460px, 92vw);
+  padding: 32px;
+  border-radius: 24px;
+  background: white;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+}
+
+.auth-modal__title {
+  margin: 0 0 10px;
+  font-size: 1.7rem;
+  color: #111;
+}
+
+.auth-modal__text {
+  margin: 0 0 22px;
+  color: #666;
+}
+
+.auth-modal__actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.auth-modal__closeBtn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+
+  width: 34px;
+  height: 34px;
+
+  border: none;
+  background: transparent;
+  cursor: pointer;
+
+  display: grid;
+  place-items: center;
+
+  color: #777;
+  font-size: 18px;
+}
+
+.auth-modal__closeBtn:hover {
+  color: #111;
+}
+
+@media (max-width: 640px) {
+  .section__actions {
+    justify-content: stretch;
+  }
+
+  .section__actions :deep(button) {
+    width: 100%;
+  }
+
+  .auth-modal__actions {
+    flex-direction: column;
+  }
 }
 </style>

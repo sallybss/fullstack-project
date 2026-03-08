@@ -10,7 +10,7 @@
         <label class="auth__label">
           Name
           <input
-            v-model="name"
+            v-model="name"            
             class="auth__input"
             type="text"
             placeholder="Your name"
@@ -57,6 +57,14 @@
           />
         </label>
 
+        <p v-if="localError" class="auth__message auth__message--error">
+          {{ localError }}
+        </p>
+
+        <p v-if="error" class="auth__message auth__message--error">
+          {{ error }}
+        </p>
+
         <BaseButton type="submit" variant="primary">
           Create account
         </BaseButton>
@@ -71,39 +79,51 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import BaseButton from '../../components/common/BaseButton.vue'
-import bg from '../../assets/images/auth_bg.jpg'
+import { ref } from "vue";
+import { useRouter } from "vue-router";
+import BaseButton from "../../components/common/BaseButton.vue";
+import bg from "../../assets/images/auth_bg.jpg";
+import { useUser } from "../../modules/auth/useUser";
 
-const name = ref('')
-const email = ref('')
-const password = ref('')
-const confirmPassword = ref('')
+const router = useRouter();
+const { registerUser, fetchToken, error, isLoggedIn, name, email, password, resetForm } = useUser();
 
-function onSubmit() {
+const confirmPassword = ref("");
+const localError = ref("");
+
+async function onSubmit() {
+  localError.value = "";
+
   if (password.value !== confirmPassword.value) {
-    alert('Passwords do not match')
-    return
+    localError.value = "Passwords do not match.";
+    return;
   }
 
-  // later: call your register service here
-  console.log('sign up', { name: name.value, email: email.value, password: password.value })
+  await registerUser();
+
+  if (!error.value) {
+    await fetchToken();
+
+    if (isLoggedIn.value) {
+      confirmPassword.value = "";
+      resetForm();
+      router.push("/");
+    }
+  }
 }
 </script>
 
-<style scooped>
+<style scoped>
 .auth {
   min-height: 100vh;
   position: relative;
-
   background-color: #b36363;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-
   display: flex;
-  justify-content: flex-end;   
-  align-items: center;    
+  justify-content: flex-end;
+  align-items: center;
   padding: 32px 140px;
 }
 
@@ -149,37 +169,23 @@ function onSubmit() {
   height: 48px;
   border-radius: 999px;
   border: 1px solid var(--stroke);
-  background: rgba(0, 0, 0, 0.25);
+  background: rgba(89, 89, 89, 0.25);
   padding: 0 18px;
   color: var(--text);
   outline: none;
-
-  &::placeholder { color: rgba(255, 255, 255, 0.45); }
-
-  &:focus {
-    border-color: rgba(255, 255, 255, 0.5);
-  }
 }
 
-.auth__row {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: -8px;
+.auth__input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
 }
 
-.auth__button {
-  height: 54px;
-  border: none;
-  border-radius: 999px;
-  background: var(--accent);
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
+.auth__input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .auth__footer {
   margin: 0;
-  color: var(--muted);
+  color: #ffffff;
   font-size: 14px;
 }
 
@@ -190,4 +196,12 @@ function onSubmit() {
   cursor: pointer;
 }
 
+.auth__message {
+  margin: 0;
+  font-size: 14px;
+}
+
+.auth__message--error {
+  color: #ff8f8f;
+}
 </style>
