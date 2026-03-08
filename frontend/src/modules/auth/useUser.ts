@@ -1,97 +1,116 @@
-import { ref, computed } from "vue"
-import type { User, RegisterUser, LoginUser } from "../../interfaces/user"
+import { ref } from "vue";
+import type { User } from "../../interfaces/user";
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL;
 
-const token = ref<string | null>(localStorage.getItem("token"))
-const user = ref<User | null>(null)
-const error = ref<string | null>(null)
-const loading = ref<boolean>(false)
+const token = ref<string | null>(localStorage.getItem("lsToken"));
+const isLoggedIn = ref<boolean>(!!localStorage.getItem("lsToken"));
+const error = ref<string | null>(null);
+const user = ref<User | null>(null);
 
-const username = ref<string>("")
-const email = ref<string>("")
-const password = ref<string>("")
-
-const isLoggedIn = computed(() => !!token.value)
+const name = ref<string>("");
+const email = ref<string>("");
+const password = ref<string>("");
 
 export const useUser = () => {
-  const register = async (payload: RegisterUser): Promise<void> => {
-    loading.value = true
-    error.value = null
-
+  // Login user
+  const fetchToken = async (): Promise<void> => {
     try {
+      error.value = null;
+
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "auth-token": localStorage.getItem("lsToken") || "",
+        },
+        body: JSON.stringify({
+          email: email.value,
+          password: password.value,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorResponse = await response.json();
+        console.log(errorResponse.error || "Login failed");
+        throw new Error(errorResponse.error || "No data available");
+      }
+
+      const authResponse = await response.json();
+
+      // Backend returns token and userId inside data
+      token.value = authResponse.data.token;
+      isLoggedIn.value = true;
+
+      localStorage.setItem("lsToken", authResponse.data.token);
+      localStorage.setItem("userIDToken", authResponse.data.userId);
+
+      console.log("user is logged in:", authResponse);
+      console.log("token:", token.value);
+    } catch (err) {
+      error.value = (err as Error).message || "An error occurred";
+      isLoggedIn.value = false;
+    }
+  };
+
+  // Register user
+  const registerUser = async (): Promise<void> => {
+    try {
+      error.value = null;
+
       const response = await fetch(`${API_URL}/api/auth/register`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(payload),
-      })
+        body: JSON.stringify({
+          username: name.value,
+          email: email.value,
+          password: password.value,
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to register user")
+        const errorResponse = await response.json();
+        console.log(errorResponse.error || "Registration failed");
+        throw new Error(errorResponse.error || "Failed to register user");
       }
 
-      const data = await response.json()
-      console.log("Registered user:", data)
+      const registerResponse = await response.json();
+      console.log("user is registered/created:", registerResponse);
     } catch (err) {
-      error.value = err instanceof Error ? err.message : "Unknown error"
-    } finally {
-      loading.value = false
+      error.value = (err as Error).message || "An error occurred";
     }
-  }
+  };
 
-  const login = async (payload: LoginUser): Promise<void> => {
-    loading.value = true
-    error.value = null
+  // Clear stored auth data
+  const logout = (): void => {
+    token.value = null;
+    user.value = null;
+    isLoggedIn.value = false;
 
-    try {
-      const response = await fetch(`${API_URL}/api/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })
+    localStorage.removeItem("lsToken");
+    localStorage.removeItem("userIDToken");
+  };
 
-      if (!response.ok) {
-        throw new Error("Failed to log in")
-      }
-
-      const data = await response.json()
-
-      token.value = data.token
-      user.value = data.user ?? null
-
-      if (token.value) {
-        localStorage.setItem("token", token.value)
-      }
-
-      console.log("Logged in:", data)
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : "Unknown error"
-    } finally {
-      loading.value = false
-    }
-  }
-
-  const logout = () => {
-    token.value = null
-    user.value = null
-    localStorage.removeItem("token")
-  }
+  // Reset shared form fields after success
+  const resetForm = (): void => {
+    name.value = "";
+    email.value = "";
+    password.value = "";
+  };
 
   return {
     token,
-    user,
+    isLoggedIn,
     error,
-    loading,
-    username,
+    user,
+    name,
     email,
     password,
-    isLoggedIn,
-    register,
-    login,
+    fetchToken,
+    registerUser,
     logout,
-  }
-}
+    resetForm,
+  };
+};

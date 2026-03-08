@@ -7,21 +7,44 @@
       <p class="auth__subtitle">Welcome back! Sign in to continue.</p>
 
       <form class="auth__form" @submit.prevent="onSubmit">
-        <label class="auth__label"> Email
-          <input v-model="email" class="auth__input" type="email" placeholder="you@email.com" autocomplete="email"required/>
+        <label class="auth__label">
+          Email
+          <input
+            v-model="email"
+            class="auth__input"
+            type="email"
+            placeholder="you@email.com"
+            autocomplete="email"
+            required
+          />
         </label>
 
-        <label class="auth__label">Password
-          <input v-model="password" class="auth__input" type="password" placeholder="••••••••" autocomplete="current-password" required/>
+        <label class="auth__label">
+          Password
+          <input
+            v-model="password"
+            class="auth__input"
+            type="password"
+            placeholder="••••••••"
+            autocomplete="current-password"
+            required
+          />
         </label>
 
         <div class="auth__row">
-          <button type="button" class="auth__link" @click="onForgotPassword">Forget Password?</button>
+          <button type="button" class="auth__link" @click="onForgotPassword">
+            Forget Password?
+          </button>
         </div>
+
+        <p v-if="error" class="auth__message auth__message--error">
+          {{ error }}
+        </p>
 
         <BaseButton type="submit" variant="primary">Sign In</BaseButton>
 
-        <p class="auth__footer">New User?
+        <p class="auth__footer">
+          New User?
           <RouterLink class="auth__link" to="/signup">Sign Up</RouterLink>
         </p>
       </form>
@@ -30,37 +53,39 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import bg from '../../assets/images/auth_bg.jpg'
-import BaseButton from '../../components/common/BaseButton.vue'
+import { useRouter } from "vue-router";
+import bg from "../../assets/images/auth_bg.jpg";
+import BaseButton from "../../components/common/BaseButton.vue";
+import { useUser } from "../../modules/auth/useUser";
 
-const email = ref('')
-const password = ref('')
+const router = useRouter();
+const { fetchToken, error, isLoggedIn, email, password, resetForm } = useUser();
 
-function onSubmit() {
-  // later: call your auth service here
-  console.log('sign in', email.value, password.value)
+async function onSubmit() {
+  await fetchToken();
+
+  if (isLoggedIn.value) {
+    resetForm();
+    router.push("/");
+  }
 }
 
 function onForgotPassword() {
-  // later: open modal / route to reset page
-  console.log('forgot password')
+  console.log("forgot password");
 }
 </script>
 
-<style scooped>
+<style scoped>
 .auth {
   min-height: 100vh;
   position: relative;
-
   background-color: #b36363;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-
   display: flex;
-  justify-content: flex-end;   
-  align-items: center;    
+  justify-content: flex-end;
+  align-items: center;
   padding: 32px 140px;
 }
 
@@ -110,28 +135,20 @@ function onForgotPassword() {
   padding: 0 18px;
   color: var(--text);
   outline: none;
+}
 
-  &::placeholder { color: rgba(255, 255, 255, 0.45); }
+.auth__input::placeholder {
+  color: rgba(255, 255, 255, 0.45);
+}
 
-  &:focus {
-    border-color: rgba(255, 255, 255, 0.5);
-  }
+.auth__input:focus {
+  border-color: rgba(255, 255, 255, 0.5);
 }
 
 .auth__row {
   display: flex;
   justify-content: flex-end;
   margin-top: -8px;
-}
-
-.auth__button {
-  height: 54px;
-  border: none;
-  border-radius: 999px;
-  background: var(--accent);
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .auth__footer {
@@ -147,5 +164,12 @@ function onForgotPassword() {
   cursor: pointer;
 }
 
+.auth__message {
+  margin: 0;
+  font-size: 14px;
+}
 
+.auth__message--error {
+  color: #ff8f8f;
+}
 </style>
