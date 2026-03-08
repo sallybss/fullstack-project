@@ -3,59 +3,140 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import HeroSection from "../../components/common/HeroSection.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
+import { useRecipes } from "../../modules/useRecipes";
 
 const router = useRouter();
+const { addRecipe, error } = useRecipes();
 
 // Form state
 const title = ref("");
 const description = ref("");
+const prepTime = ref<number | null>(null);
 const cookTime = ref<number | null>(null);
 const servings = ref<number | null>(null);
 const category = ref("");
+const imageUrl = ref("");
+
+// Local UI feedback
+const localError = ref("");
+const successMessage = ref("");
 
 // Dynamic rows
 const ingredients = ref([{ qty: "", measurement: "", item: "" }]);
 const steps = ref([""]);
 
-// Actions
+// Navigation
 function goBack() {
   router.back();
 }
 
+// Ingredient actions
 function addIngredient() {
   ingredients.value.push({ qty: "", measurement: "", item: "" });
 }
 
 function removeIngredient(index: number) {
   ingredients.value.splice(index, 1);
+
   if (ingredients.value.length === 0) {
     ingredients.value.push({ qty: "", measurement: "", item: "" });
   }
 }
 
+// Step actions
 function addStep() {
   steps.value.push("");
 }
 
 function removeStep(index: number) {
   steps.value.splice(index, 1);
+
   if (steps.value.length === 0) {
     steps.value.push("");
   }
 }
 
-function submitRecipe() {
-  console.log({
-    title: title.value,
-    description: description.value,
-    cookTime: cookTime.value,
+/**
+ * Backend expects ingredients as string[]
+ * Example: "2 tbsp sugar"
+ */
+function buildIngredientList(): string[] {
+  return ingredients.value
+    .map((ingredient) =>
+      [ingredient.qty, ingredient.measurement, ingredient.item]
+        .filter(Boolean)
+        .join(" ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+async function submitRecipe() {
+  localError.value = "";
+  successMessage.value = "";
+
+  const finalIngredients = buildIngredientList();
+  const finalSteps = steps.value
+    .map((step) => step.trim())
+    .filter(Boolean);
+
+  if (!title.value.trim()) {
+    localError.value = "Recipe title is required.";
+    return;
+  }
+
+  if (!description.value.trim()) {
+    localError.value = "Description is required.";
+    return;
+  }
+
+  if (cookTime.value === null || cookTime.value < 0) {
+    localError.value = "Cook time is required.";
+    return;
+  }
+
+  if (servings.value === null || servings.value < 1) {
+    localError.value = "Servings is required.";
+    return;
+  }
+
+  if (!category.value.trim()) {
+    localError.value = "Category is required.";
+    return;
+  }
+
+  if (finalIngredients.length === 0) {
+    localError.value = "At least one ingredient is required.";
+    return;
+  }
+
+  if (finalSteps.length === 0) {
+    localError.value = "At least one instruction step is required.";
+    return;
+  }
+
+  await addRecipe({
+    title: title.value.trim(),
+    description: description.value.trim(),
+    ingredients: finalIngredients,
+    instructions: finalSteps,
+    prepTimeMinutes: prepTime.value ?? 0,
+    cookTimeMinutes: cookTime.value,
     servings: servings.value,
-    category: category.value,
-    ingredients: ingredients.value,
-    steps: steps.value,
+    cuisine: category.value,
+    isPublic: true,
+    imageUrl:
+      imageUrl.value.trim() || "https://picsum.photos/seed/recipe/900/600",
   });
 
-  alert("Recipe posted! (for now just console log)");
+  if (!error.value) {
+    successMessage.value = "Recipe created successfully.";
+
+    // Small delay so user can see the success state
+    setTimeout(() => {
+      router.push("/");
+    }, 700);
+  }
 }
 </script>
 
@@ -77,6 +158,16 @@ function submitRecipe() {
 
         <div class="upload-box">
           <BaseButton variant="outline" type="button">+ Add a photo</BaseButton>
+        </div>
+
+        <!-- Optional image URL -->
+        <div class="field">
+          <label>Image URL</label>
+          <input
+            v-model="imageUrl"
+            type="text"
+            placeholder="Paste an image URL (optional)"
+          />
         </div>
 
         <!-- Recipe title -->
@@ -106,8 +197,21 @@ function submitRecipe() {
           />
         </div>
 
-        <!-- Row -->
+        <!-- Times / servings / category -->
         <div class="row">
+          <div class="field">
+            <label>Prep time</label>
+            <div class="suffix">
+              <input
+                v-model.number="prepTime"
+                type="number"
+                min="0"
+                placeholder=""
+              />
+              <span>min</span>
+            </div>
+          </div>
+
           <div class="field">
             <label>Cook time</label>
             <div class="suffix">
@@ -123,13 +227,19 @@ function submitRecipe() {
 
           <div class="field">
             <label>Servings</label>
-            <input v-model.number="servings" type="number" min="0" />
+            <input
+              v-model.number="servings"
+              type="number"
+              min="1"
+              placeholder="e.g. 2"
+            />
           </div>
 
           <div class="field">
             <label>Category</label>
             <select v-model="category">
               <option value="">Select</option>
+              <option>Italian</option>
               <option>Dessert</option>
               <option>Lunch</option>
               <option>Dinner</option>
@@ -211,14 +321,27 @@ function submitRecipe() {
           </BaseButton>
         </section>
 
+        <!-- Feedback -->
+        <p v-if="localError" style="color: #d9534f; margin-top: 16px;">
+          {{ localError }}
+        </p>
+
+        <p v-if="error" style="color: #d9534f; margin-top: 16px;">
+          {{ error }}
+        </p>
+
+        <p v-if="successMessage" style="color: #2e7d32; margin-top: 16px;">
+          {{ successMessage }}
+        </p>
+
         <!-- Actions -->
         <div class="actions">
-          <BaseButton variant="outline" type="button" @click="goBack"
-            >Cancel</BaseButton
-          >
-          <BaseButton variant="primary" type="button" @click="submitRecipe"
-            >Post</BaseButton
-          >
+          <BaseButton variant="outline" type="button" @click="goBack">
+            Cancel
+          </BaseButton>
+          <BaseButton variant="primary" type="button" @click="submitRecipe">
+            Post
+          </BaseButton>
         </div>
       </div>
     </main>
@@ -371,7 +494,7 @@ textarea {
 /* Row layout */
 .row {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
   margin-top: 8px;
 }

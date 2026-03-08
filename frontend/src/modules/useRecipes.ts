@@ -1,7 +1,6 @@
 import { ref } from "vue";
 import type { Recipe } from "../interfaces/recipe";
 
-// Global state shared between all components using this composable
 const error = ref<string | null>(null);
 const loading = ref<boolean>(false);
 const recipes = ref<Recipe[]>([]);
@@ -47,11 +46,8 @@ export const useRecipes = () => {
       }
 
       const data: Recipe[] = await response.json();
-
-      // Read saved recipes from localStorage
       const savedIds = getSavedRecipeIds();
 
-      // Attach saved state to each recipe
       recipes.value = data.map((recipe) => ({
         ...recipe,
         saved: savedIds.includes(recipe._id),
@@ -67,19 +63,16 @@ export const useRecipes = () => {
 
   /**
    * Toggle saved state of a recipe
-   * This updates both:
-   * -Vue reactive state
-   * -localStorage persistence
+   *
+   * IMPORTANT:
+   * This updates both Vue state and localStorage persistence.
    */
   const toggleSave = (recipeId: string): void => {
     const recipe = recipes.value.find((r) => r._id === recipeId);
-
     if (!recipe) return;
 
-    // Toggle saved state
     recipe.saved = !recipe.saved;
 
-    // Update saved IDs list
     const savedIds = recipes.value
       .filter((r) => r.saved)
       .map((r) => r._id);
@@ -87,11 +80,75 @@ export const useRecipes = () => {
     setSavedRecipeIds(savedIds);
   };
 
+  /**
+   * Create a new recipe
+   *
+   * IMPORTANT:
+   * Protected endpoints require the auth token.
+   * We also keep userId because many backends attach ownership to the created item.
+   */
+   // Creates a new recipe through the protected backend endpoint
+  const addRecipe = async (recipeData: {
+    title: string;
+    description: string;
+    ingredients: string[];
+    instructions: string[];
+    prepTimeMinutes: number;
+    cookTimeMinutes: number;
+    servings: number;
+    cuisine: string;
+    isPublic: boolean;
+    imageUrl?: string;
+  }): Promise<void> => {
+    try {
+      error.value = null;
+
+      const token = localStorage.getItem("lsToken");
+      const userId = localStorage.getItem("userIDToken");
+
+      if (!token) {
+        throw new Error("No token available");
+      }
+
+      if (!userId) {
+        throw new Error("No user id available");
+      }
+
+      const response = await fetch(`${API_URL}/api/recipes`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "auth-token": token,
+        },
+        body: JSON.stringify({
+          ...recipeData,
+          _createdBy: userId,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorResponse = await response.json();
+        throw new Error(errorResponse.error || "Failed to create recipe");
+      }
+
+      const newRecipe: Recipe = await response.json();
+      newRecipe.saved = false;
+
+      recipes.value.push(newRecipe);
+
+      console.log("Recipe added:", newRecipe);
+    } catch (err) {
+      error.value = (err as Error).message;
+    }
+  };
+
+
   return {
     error,
     loading,
     recipes,
     fetchRecipes,
     toggleSave,
+    addRecipe,
   };
 };
