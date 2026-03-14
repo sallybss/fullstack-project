@@ -23,6 +23,7 @@ const routes = [
 
   { path: "/recipes/:id", name: "recipe", component: RecipeView },
   { path: "/add-recipe", name: "add-recipe", component: AddRecipe },
+  { path: "/edit-recipe/:id", name: "edit-recipe", component: () => import("../pages/recipes/EditRecipe.vue") },
 
   { path: "/profile/:id", name: "profile", component: ProfileView },
 

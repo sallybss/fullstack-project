@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
@@ -7,33 +7,70 @@ import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
 import AdvancedRecipeCard from "../../components/recipes/AdvancedRecipeCard.vue";
 
-import { mockRecipes } from "../../data/mockRecipes";
-import type { Recipe } from "../../types/recipe";
+import { useRecipes } from "../../modules/useRecipes";
+import { useUser } from "../../modules/auth/useUser";
 
 const router = useRouter();
 
+const { recipes, error, loading, fetchRecipes, toggleSave, deleteRecipe } =
+  useRecipes();
+
+const { user } = useUser();
+
+/**
+ * Current logged-in user id from localStorage
+ */
+const currentUserId = ref<string | null>(localStorage.getItem("userIDToken"));
+
+/**
+ * Back navigation
+ */
 function goBack() {
   router.back();
 }
 
-// Mock "logged in user"
-const me = ref({
-  id: "user-1",
-  name: "Jane Doe",
-  initials: "JD",
-  email: "john@example.com",
-  memberSince: "January 2025",
-  recipesPosted: 12,
-  followers: 5,
+/**
+ * Fetch recipes when page loads
+ */
+onMounted(async () => {
+  await fetchRecipes();
 });
 
-const all = ref<Recipe[]>(mockRecipes.map((r) => ({ ...r })));
+/**
+ * Current user display data
+ * Uses real auth user if available, otherwise safe fallbacks
+ */
+const me = computed(() => {
+  const username = user.value?.username || "User";
+  const email = user.value?.email || "";
+  const initials = username
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
+  return {
+    id: currentUserId.value || "",
+    name: username,
+    initials: initials || "U",
+    email,
+    memberSince: "Recently joined",
+    recipesPosted: 0,
+    followers: 0,
+  };
+});
+
+/**
+ * Only current user's recipes
+ */
 const myRecipes = computed(() =>
-  all.value.filter((r) => r.author?.id === me.value.id),
+  recipes.value.filter((recipe) => recipe.owner?._id === currentUserId.value),
 );
 
-// pagination (2 rows x 4)
+/**
+ * Pagination
+ */
 const pageSize = 8;
 const page = ref(1);
 
@@ -46,27 +83,34 @@ const paged = computed(() => {
   return myRecipes.value.slice(start, start + pageSize);
 });
 
-// actions
-function toggleSave(id: string) {
-  const r = all.value.find((x) => x.id === id);
-  if (r) r.saved = !r.saved;
-}
-
+/**
+ * Edit recipe
+ * Update route if your edit page uses a different path
+ */
 function editRecipe(id: string) {
-  console.log("Edit recipe", id);
+  router.push({ name: "edit-recipe", params: { id } });
 }
 
-function deleteRecipe(id: string) {
-  const ok = confirm("Delete this recipe?");
+/**
+ * Delete recipe
+ */
+async function handleDeleteRecipe(id: string) {
+  const ok = window.confirm("Delete this recipe?");
   if (!ok) return;
 
-  all.value = all.value.filter((r) => r.id !== id);
+  await deleteRecipe(id);
 
-  if (page.value > totalPages.value) page.value = totalPages.value;
+  if (page.value > totalPages.value) {
+    page.value = totalPages.value;
+  }
 }
 
+/**
+ * Edit profile placeholder
+ * Replace later when profile edit page exists
+ */
 function goToEditProfile() {
-  alert("Later: edit profile page");
+  router.push("/profile/edit");
 }
 </script>
 
@@ -151,15 +195,17 @@ function goToEditProfile() {
           creating simple yet elegant dishes that bring people together.
         </p>
 
+        <p v-if="loading">Loading recipes...</p>
+        <p v-if="error">{{ error }}</p>
         <!-- GRID -->
         <section class="grid">
           <AdvancedRecipeCard
             v-for="r in paged"
-            :key="r.id"
+            :key="r._id"
             :recipe="r"
             @toggle-save="toggleSave"
             @edit="editRecipe"
-            @delete="deleteRecipe"
+            @delete="handleDeleteRecipe"
           />
         </section>
 
@@ -358,5 +404,17 @@ function goToEditProfile() {
   .grid {
     grid-template-columns: 1fr;
   }
+}
+
+.info {
+  text-align: center;
+  margin-top: 20px;
+  color: #777;
+}
+
+.error {
+  text-align: center;
+  margin-top: 20px;
+  color: #e53935;
 }
 </style>

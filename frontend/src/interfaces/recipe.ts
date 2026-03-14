@@ -25,3 +25,6 @@ export type Recipe = {
     avatarUrl?: string;
   };
 }
+
+export type NewRecipe = Omit<Recipe,"_id" | "createdAt" | "updatedAt" | "ratingSummary" | "saved">;
+
