@@ -22,7 +22,6 @@ export const useUser = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "auth-token": localStorage.getItem("lsToken") || "",
         },
         body: JSON.stringify({
           email: email.value,
@@ -31,9 +30,9 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        const errorResponse = await response.json();
-        console.log(errorResponse.error || "Login failed");
-        throw new Error(errorResponse.error || "No data available");
+        const errorText = await response.text();
+        console.log(errorText || "Login failed");
+        throw new Error(errorText || "No data available");
       }
 
       const authResponse = await response.json();
@@ -71,9 +70,9 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        const errorResponse = await response.json();
-        console.log(errorResponse.error || "Registration failed");
-        throw new Error(errorResponse.error || "Failed to register user");
+        const errorText = await response.text();
+        console.log(errorText || "Registration failed");
+        throw new Error(errorText || "Failed to register user");
       }
 
       const registerResponse = await response.json();

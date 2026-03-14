@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import type { Recipe } from "../../types/recipe";
+import type { Recipe } from "../../interfaces/recipe";
 import BaseButton from "../common/BaseButton.vue";
 
 const props = defineProps<{
@@ -17,10 +17,18 @@ const emit = defineEmits<{
 const router = useRouter();
 
 function view() {
-  router.push(`/recipes/${props.recipe.baseId ?? props.recipe.id}`);
+  router.push(`/recipes/${props.recipe._id}`);
 }
 
-const stars = computed(() => Math.round(props.recipe.rating));
+const totalTime = computed(
+  () => props.recipe.prepTimeMinutes + props.recipe.cookTimeMinutes
+);
+
+const stars = computed(() =>
+  Math.round(props.recipe.ratingSummary?.average ?? 0)
+);
+
+const ratingCount = computed(() => props.recipe.ratingSummary?.count ?? 0);
 </script>
 
 <template>
@@ -32,14 +40,14 @@ const stars = computed(() => Math.round(props.recipe.rating));
     <div class="metaRow">
       <span class="time">
         <i class="pi pi-clock"></i>
-        {{ recipe.timeMinutes }} min
+        {{ totalTime }} min
       </span>
 
       <span class="rating">
         <span class="stars" aria-hidden="true">
           <span v-for="n in 5" :key="n">{{ n <= stars ? "★" : "☆" }}</span>
         </span>
-        <span class="count">({{ recipe.ratingCount }})</span>
+        <span class="count">({{ ratingCount }})</span>
       </span>
     </div>
 
@@ -55,7 +63,7 @@ const stars = computed(() => Math.round(props.recipe.rating));
         type="button"
         :class="{ active: recipe.saved }"
         aria-label="Save"
-        @click="emit('toggle-save', recipe.id)"
+        @click="emit('toggle-save', recipe._id)"
       >
         <i class="pi pi-bookmark"></i>
       </button>
@@ -64,7 +72,7 @@ const stars = computed(() => Math.round(props.recipe.rating));
         class="iconBtn"
         type="button"
         aria-label="Edit"
-        @click="emit('edit', recipe.id)"
+        @click="emit('edit', recipe._id)"
       >
         <i class="pi pi-pencil"></i>
       </button>
@@ -73,7 +81,7 @@ const stars = computed(() => Math.round(props.recipe.rating));
         class="iconBtn danger"
         type="button"
         aria-label="Delete"
-        @click="emit('delete', recipe.id)"
+        @click="emit('delete', recipe._id)"
       >
         <i class="pi pi-trash"></i>
       </button>
