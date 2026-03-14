@@ -32,7 +32,7 @@ router.post("/", verifyToken, uploadRecipePhoto.single("photo"), createRecipe);
 router.post("/:id/comments", verifyToken, addRecipeComment);
 router.post("/:id/favorite", verifyToken, addFavoriteRecipe);
 router.post("/:id/rating", verifyToken, rateRecipe);
-router.put("/:id", verifyToken, updateRecipeById);
+router.put("/:id", verifyToken, uploadRecipePhoto.single("photo"), updateRecipeById);
 router.put("/:id/comments/:commentId", verifyToken, updateRecipeComment);
 router.delete("/:id/comments/:commentId", verifyToken, deleteRecipeComment);
 router.delete("/:id", verifyToken, deleteRecipeById);

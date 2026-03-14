@@ -16,6 +16,7 @@ export type RecipeFormValues = {
   servings: number;
   cuisine: string;
   imageUrl?: string;
+  imageFile?: File | null;
   ingredients: string[];
   instructions: string[];
   isPublic: boolean;
@@ -32,7 +33,7 @@ const props = withDefaults(
   {
     serverError: null,
     loading: false,
-  }
+  },
 );
 
 const emit = defineEmits<{
@@ -50,8 +51,14 @@ const imageUrl = ref("");
 
 const localError = ref("");
 
-const ingredients = ref<IngredientRow[]>([{ qty: "", measurement: "", item: "" }]);
+const ingredients = ref<IngredientRow[]>([
+  { qty: "", measurement: "", item: "" },
+]);
 const steps = ref<string[]>([""]);
+
+const fileInput = ref<HTMLInputElement | null>(null);
+const imageFile = ref<File | null>(null);
+const imagePreview = ref("");
 
 function rowsFromStrings(values?: string[]): IngredientRow[] {
   if (!values || values.length === 0) {
@@ -73,9 +80,15 @@ function initializeForm() {
   servings.value = props.initialValues?.servings ?? 1;
   category.value = props.initialValues?.cuisine ?? "";
   imageUrl.value = props.initialValues?.imageUrl ?? "";
+  imagePreview.value = imageUrl.value
+  ? imageUrl.value.startsWith("http")
+    ? imageUrl.value
+    : `${import.meta.env.VITE_API_URL}${imageUrl.value}`
+  : "";
   ingredients.value = rowsFromStrings(props.initialValues?.ingredients);
   steps.value =
-    props.initialValues?.instructions && props.initialValues.instructions.length > 0
+    props.initialValues?.instructions &&
+    props.initialValues.instructions.length > 0
       ? [...props.initialValues.instructions]
       : [""];
 }
@@ -85,7 +98,7 @@ watch(
   () => {
     initializeForm();
   },
-  { immediate: true, deep: true }
+  { immediate: true, deep: true },
 );
 
 function addIngredient() {
@@ -118,9 +131,50 @@ function buildIngredientList(): string[] {
       [ingredient.qty, ingredient.measurement, ingredient.item]
         .filter(Boolean)
         .join(" ")
-        .trim()
+        .trim(),
     )
     .filter(Boolean);
+}
+
+function openFilePicker() {
+  fileInput.value?.click();
+}
+
+function handleImageChange(event: Event) {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+
+  if (!file) return;
+
+  const allowedTypes = ["image/png", "image/jpeg"];
+  const maxSize = 5 * 1024 * 1024; // 5MB
+
+  if (!allowedTypes.includes(file.type)) {
+    localError.value = "Only JPG and PNG images are allowed.";
+    target.value = "";
+    return;
+  }
+
+  if (file.size > maxSize) {
+    localError.value = "Image must be smaller than 5MB.";
+    target.value = "";
+    return;
+  }
+
+  localError.value = "";
+  imageFile.value = file;
+  imagePreview.value = URL.createObjectURL(file);
+}
+
+
+function removeImage() {
+  imagePreview.value = "";
+  imageFile.value = null;
+  imageUrl.value = "";
+
+  if (fileInput.value) {
+    fileInput.value.value = "";
+  }
 }
 
 function handleSubmit() {
@@ -174,14 +228,17 @@ function handleSubmit() {
     servings: servings.value,
     cuisine: category.value,
     isPublic: true,
-    imageUrl: imageUrl.value.trim() || "https://picsum.photos/seed/recipe/900/600",
+    imageUrl: imageUrl.value.trim(),
+    imageFile: imageFile.value,
   });
 }
 </script>
 
 <template>
   <div class="card">
-    <button class="back" type="button" @click="$emit('cancel')">← Go back</button>
+    <button class="back" type="button" @click="$emit('cancel')">
+      ← Go back
+    </button>
 
     <h1 class="title">{{ pageTitle }}</h1>
 
@@ -191,10 +248,36 @@ function handleSubmit() {
     </div>
 
     <div class="upload-box">
-      <BaseButton variant="outline" type="button">+ Add a photo</BaseButton>
-    </div>
+  <input
+    ref="fileInput"
+    type="file"
+    accept=".jpg,.jpeg,.png"
+    hidden
+    @change="handleImageChange"
+  />
 
-    <div class="field">
+  <template v-if="imagePreview">
+    <img :src="imagePreview" alt="Recipe preview" class="preview-image" />
+
+    <div class="image-overlay">
+      <BaseButton variant="outline" type="button" @click="openFilePicker">
+        Change photo
+      </BaseButton>
+
+      <button class="remove-image-btn" type="button" @click="removeImage">
+        Remove photo
+      </button>
+    </div>
+  </template>
+
+  <template v-else>
+    <BaseButton variant="outline" type="button" @click="openFilePicker">
+      + Add a photo
+    </BaseButton>
+  </template>
+</div>
+
+    <div v-if="!imagePreview" class="field">
       <label>Image URL</label>
       <input
         v-model="imageUrl"
@@ -247,7 +330,12 @@ function handleSubmit() {
 
       <div class="field">
         <label>Servings</label>
-        <input v-model.number="servings" type="number" min="1" placeholder="e.g. 2" />
+        <input
+          v-model.number="servings"
+          type="number"
+          min="1"
+          placeholder="e.g. 2"
+        />
       </div>
 
       <div class="field">
@@ -312,9 +400,7 @@ function handleSubmit() {
             @click="removeStep(index)"
             :disabled="steps.length === 1"
             :title="
-              steps.length === 1
-                ? 'At least one step is required'
-                : 'Remove'
+              steps.length === 1 ? 'At least one step is required' : 'Remove'
             "
           >
             <i class="pi pi-trash"></i>
@@ -413,6 +499,8 @@ function handleSubmit() {
   display: grid;
   place-items: center;
   margin-bottom: 22px;
+  overflow: hidden;
+  position: relative;
 }
 
 .field {
@@ -573,6 +661,45 @@ textarea {
   justify-content: flex-end;
   gap: 14px;
   margin-top: 28px;
+}
+
+.preview-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+}
+
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.upload-box:hover .image-overlay {
+  opacity: 1;
+}
+
+.remove-image-btn {
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+}
+
+.remove-image-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
 @media (max-width: 900px) {

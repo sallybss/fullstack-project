@@ -26,5 +26,9 @@ export type Recipe = {
   };
 }
 
-export type NewRecipe = Omit<Recipe,"_id" | "createdAt" | "updatedAt" | "ratingSummary" | "saved">;
-
+export type NewRecipe = Omit<
+  Recipe,
+  "_id" | "createdAt" | "updatedAt" | "ratingSummary" | "saved"
+> & {
+  imageFile?: File | null;
+};

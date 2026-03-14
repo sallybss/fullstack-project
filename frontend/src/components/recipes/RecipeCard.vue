@@ -3,7 +3,7 @@
     <div class="card__imageWrap">
       <img
         class="card__image"
-        :src="recipe.imageUrl || fallbackImage"
+        :src="imageSrc"
         :alt="recipe.title"
         @error="handleImageError"
       />
@@ -71,6 +71,18 @@ const emit = defineEmits<{
 }>();
 
 const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+const imageSrc = computed(() => {
+  if (!props.recipe.imageUrl) return fallbackImage;
+
+  if (props.recipe.imageUrl.startsWith("http")) {
+    return props.recipe.imageUrl;
+  }
+
+  return `${API_URL}${props.recipe.imageUrl}`;
+});
 
 // Combines prep and cook time for a single display value
 const totalTime = computed(() => {
