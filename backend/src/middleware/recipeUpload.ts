@@ -4,6 +4,9 @@ import multer from "multer";
 
 const uploadsDir = path.join(process.cwd(), "uploads", "recipes");
 
+const allowedMimeTypes = ["image/jpeg", "image/png"];
+const allowedExtensions = [".jpg", ".jpeg", ".png"];
+
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -11,7 +14,7 @@ const storage = multer.diskStorage({
   },
   filename: (_req, file, cb) => {
     const ext = path.extname(file.originalname || "").toLowerCase();
-    const safeExt = ext && [".jpg", ".jpeg", ".png", ".webp"].includes(ext) ? ext : ".jpg";
+    const safeExt = allowedExtensions.includes(ext) ? ext : ".jpg";
     cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${safeExt}`);
   },
 });
@@ -21,11 +24,12 @@ function fileFilter(
   file: Express.Multer.File,
   cb: multer.FileFilterCallback
 ) {
-  if (file.mimetype.startsWith("image/")) {
+  if (allowedMimeTypes.includes(file.mimetype)) {
     cb(null, true);
     return;
   }
-  cb(new Error("photo must be an image file"));
+
+  cb(new Error("photo must be a JPG or PNG image"));
 }
 
 export const uploadRecipePhoto = multer({
@@ -33,4 +37,3 @@ export const uploadRecipePhoto = multer({
   fileFilter,
   limits: { fileSize: 5 * 1024 * 1024 },
 });
-

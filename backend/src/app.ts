@@ -52,7 +52,7 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
     }
     return res.status(400).json({ error: err.message });
   }
-  if (typeof err?.message === "string" && err.message.includes("photo must be an image file")) {
+  if (typeof err?.message === "string" && err.message.includes("photo must be a JPG or PNG image")) {
     return res.status(400).json({ error: err.message });
   }
   if (err) {

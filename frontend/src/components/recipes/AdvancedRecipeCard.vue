@@ -16,25 +16,48 @@ const emit = defineEmits<{
 
 const router = useRouter();
 
+const API_URL = import.meta.env.VITE_API_URL;
+const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
+
 function view() {
   router.push(`/recipes/${props.recipe._id}`);
 }
 
 const totalTime = computed(
-  () => props.recipe.prepTimeMinutes + props.recipe.cookTimeMinutes
+  () => props.recipe.prepTimeMinutes + props.recipe.cookTimeMinutes,
 );
 
 const stars = computed(() =>
-  Math.round(props.recipe.ratingSummary?.average ?? 0)
+  Math.round(props.recipe.ratingSummary?.average ?? 0),
 );
 
 const ratingCount = computed(() => props.recipe.ratingSummary?.count ?? 0);
+
+const imageSrc = computed(() => {
+  if (!props.recipe.imageUrl) return fallbackImage;
+
+  if (props.recipe.imageUrl.startsWith("http")) {
+    return props.recipe.imageUrl;
+  }
+
+  return `${API_URL}${props.recipe.imageUrl}`;
+});
+
+function handleImageError(event: Event) {
+  const target = event.target as HTMLImageElement;
+  target.src = fallbackImage;
+}
 </script>
 
 <template>
   <article class="card">
     <div class="imgWrap">
-      <img class="img" :src="recipe.imageUrl" :alt="recipe.title" />
+      <img
+        class="img"
+        :src="imageSrc"
+        :alt="recipe.title"
+        @error="handleImageError"
+      />
     </div>
 
     <div class="metaRow">

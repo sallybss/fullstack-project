@@ -42,13 +42,13 @@ function pickRecipeBody(body: any) {
   if (typeof body.isPublic === "boolean") recipe.isPublic = body.isPublic;
 
   const rawImage = body.imageUrl ?? body.photo;
-  if (rawImage !== undefined) {
-    const image = String(rawImage ?? "").trim();
-    if (image && !isValidUrl(image)) {
-      throw new Error("imageUrl/photo must be a valid http/https URL");
-    }
-    recipe.imageUrl = image;
+  if (body.imageUrl !== undefined) {
+  const image = String(body.imageUrl ?? "").trim();
+  if (image && !isValidUrl(image)) {
+    throw new Error("imageUrl must be a valid http/https URL");
   }
+  recipe.imageUrl = image;
+}
 
   if (body.prepTimeMinutes !== undefined) {
     const prep = Number(body.prepTimeMinutes);
@@ -407,6 +407,11 @@ export async function updateRecipeById(req: Request, res: Response) {
     await connect();
 
     const update = pickRecipeBody(req.body);
+
+    if (req.file?.filename) {
+      update.imageUrl = `/uploads/recipes/${req.file.filename}`;
+    }
+
     const result = await recipeModel.findByIdAndUpdate(id, update, { new: true });
 
     if (!result) res.status(404).send("Cannot update recipe with id=" + id);
