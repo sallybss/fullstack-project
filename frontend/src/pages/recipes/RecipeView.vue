@@ -1,7 +1,6 @@
 <template>
   <div class="page">
-    <HeroSection v-if="recipe" :imageUrl="recipe.imageUrl || fallbackImage" />
-
+  <HeroSection v-if="recipe" :imageUrl="heroImageSrc" />
     <main class="container">
       <div v-if="loading" class="recipe-card">
         <p>Loading recipe...</p>
@@ -62,12 +61,12 @@ const router = useRouter();
 const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
 
 const fallbackImage = "https://picsum.photos/seed/recipe/1200/700";
+const API_URL = import.meta.env.VITE_API_URL;
 
 // Read recipe id from URL: /recipes/:id
 const recipeId = computed(() => String(route.params.id));
 
 onMounted(async () => {
-  // Fetch recipes only if they are not already loaded
   if (recipes.value.length === 0) {
     await fetchRecipes();
   }
@@ -81,6 +80,16 @@ function goBack() {
 const recipe = computed(() =>
   recipes.value.find((r) => r._id === recipeId.value),
 );
+
+const heroImageSrc = computed(() => {
+  if (!recipe.value?.imageUrl) return fallbackImage;
+
+  if (recipe.value.imageUrl.startsWith("http")) {
+    return recipe.value.imageUrl;
+  }
+
+  return `${API_URL}${recipe.value.imageUrl}`;
+});
 
 // Show up to 4 other recipes excluding the current one
 const otherRecipes = computed(() =>

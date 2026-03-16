@@ -7,6 +7,19 @@
 
       <section class="section">
         <div class="section__actions">
+          <div class="chips">
+            <button
+              v-for="chip in categoryChips"
+              :key="chip"
+              type="button"
+              class="chip"
+              :class="{ 'chip--active': selectedCategory === chip }"
+              @click="selectedCategory = chip"
+            >
+              {{ chip }}
+            </button>
+          </div>
+
           <BaseButton
             variant="primary"
             type="button"
@@ -27,7 +40,7 @@
 
         <div v-else-if="filteredRecipes.length === 0" class="empty-state">
           <h2>No recipes found</h2>
-          <p>No recipes match your search.</p>
+          <p>{{ emptyStateMessage }}</p>
         </div>
 
         <RecipeGrid v-else>
@@ -94,6 +107,9 @@ const router = useRouter();
 
 const query = ref("");
 const showAuthModal = ref(false);
+const selectedCategory = ref("All");
+
+const categoryChips = ["All", "Breakfast", "Lunch", "Dinner", "Dessert"];
 
 const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
 const { isLoggedIn } = useUser();
@@ -102,13 +118,35 @@ onMounted(() => {
   fetchRecipes();
 });
 
-// Filters recipes by title using the hero search input
+// Filters recipes by title and selected chip
 const filteredRecipes = computed(() => {
   const normalizedQuery = query.value.trim().toLowerCase();
 
-  return recipes.value.filter((recipe) =>
-    recipe.title.toLowerCase().includes(normalizedQuery),
-  );
+  return recipes.value.filter((recipe) => {
+    const matchesQuery = recipe.title.toLowerCase().includes(normalizedQuery);
+
+    const matchesCategory =
+      selectedCategory.value === "All" ||
+      recipe.cuisine?.toLowerCase() === selectedCategory.value.toLowerCase();
+
+    return matchesQuery && matchesCategory;
+  });
+});
+
+const emptyStateMessage = computed(() => {
+  if (selectedCategory.value === "All" && !query.value.trim()) {
+    return "There are no recipes to display yet.";
+  }
+
+  if (selectedCategory.value === "All") {
+    return "No recipes match your search.";
+  }
+
+  if (!query.value.trim()) {
+    return `No ${selectedCategory.value.toLowerCase()} recipes available yet.`;
+  }
+
+  return `No ${selectedCategory.value.toLowerCase()} recipes match your search.`;
 });
 
 // Protected action: only logged-in users can add a recipe
@@ -159,8 +197,42 @@ function goToSignUp() {
 
 .section__actions {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid #e4e4e7;
+  background: white;
+  color: #444;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.chip:hover {
+  border-color: #ff724c;
+  color: #ff724c;
+}
+
+.chip--active {
+  background: #ff724c;
+  border-color: #ff724c;
+  color: white;
 }
 
 .empty-state {
@@ -220,17 +292,13 @@ function goToSignUp() {
   position: absolute;
   top: 14px;
   right: 14px;
-
   width: 34px;
   height: 34px;
-
   border: none;
   background: transparent;
   cursor: pointer;
-
   display: grid;
   place-items: center;
-
   color: #777;
   font-size: 18px;
 }
