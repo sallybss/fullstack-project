@@ -60,6 +60,8 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const imageFile = ref<File | null>(null);
 const imagePreview = ref("");
 
+const categoryOptions = ["Breakfast", "Lunch", "Dinner", "Dessert"];
+
 function rowsFromStrings(values?: string[]): IngredientRow[] {
   if (!values || values.length === 0) {
     return [{ qty: "", measurement: "", item: "" }];
@@ -81,10 +83,10 @@ function initializeForm() {
   category.value = props.initialValues?.cuisine ?? "";
   imageUrl.value = props.initialValues?.imageUrl ?? "";
   imagePreview.value = imageUrl.value
-  ? imageUrl.value.startsWith("http")
-    ? imageUrl.value
-    : `${import.meta.env.VITE_API_URL}${imageUrl.value}`
-  : "";
+    ? imageUrl.value.startsWith("http")
+      ? imageUrl.value
+      : `${import.meta.env.VITE_API_URL}${imageUrl.value}`
+    : "";
   ingredients.value = rowsFromStrings(props.initialValues?.ingredients);
   steps.value =
     props.initialValues?.instructions &&
@@ -147,7 +149,7 @@ function handleImageChange(event: Event) {
   if (!file) return;
 
   const allowedTypes = ["image/png", "image/jpeg"];
-  const maxSize = 5 * 1024 * 1024; // 5MB
+  const maxSize = 5 * 1024 * 1024;
 
   if (!allowedTypes.includes(file.type)) {
     localError.value = "Only JPG and PNG images are allowed.";
@@ -165,7 +167,6 @@ function handleImageChange(event: Event) {
   imageFile.value = file;
   imagePreview.value = URL.createObjectURL(file);
 }
-
 
 function removeImage() {
   imagePreview.value = "";
@@ -248,34 +249,34 @@ function handleSubmit() {
     </div>
 
     <div class="upload-box">
-  <input
-    ref="fileInput"
-    type="file"
-    accept=".jpg,.jpeg,.png"
-    hidden
-    @change="handleImageChange"
-  />
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".jpg,.jpeg,.png"
+        hidden
+        @change="handleImageChange"
+      />
 
-  <template v-if="imagePreview">
-    <img :src="imagePreview" alt="Recipe preview" class="preview-image" />
+      <template v-if="imagePreview">
+        <img :src="imagePreview" alt="Recipe preview" class="preview-image" />
 
-    <div class="image-overlay">
-      <BaseButton variant="outline" type="button" @click="openFilePicker">
-        Change photo
-      </BaseButton>
+        <div class="image-overlay">
+          <BaseButton variant="outline" type="button" @click="openFilePicker">
+            Change photo
+          </BaseButton>
 
-      <button class="remove-image-btn" type="button" @click="removeImage">
-        Remove photo
-      </button>
+          <button class="remove-image-btn" type="button" @click="removeImage">
+            Remove photo
+          </button>
+        </div>
+      </template>
+
+      <template v-else>
+        <BaseButton variant="outline" type="button" @click="openFilePicker">
+          + Add a photo
+        </BaseButton>
+      </template>
     </div>
-  </template>
-
-  <template v-else>
-    <BaseButton variant="outline" type="button" @click="openFilePicker">
-      + Add a photo
-    </BaseButton>
-  </template>
-</div>
 
     <div v-if="!imagePreview" class="field">
       <label>Image URL</label>
@@ -342,10 +343,13 @@ function handleSubmit() {
         <label>Category</label>
         <select v-model="category">
           <option value="">Select</option>
-          <option>Italian</option>
-          <option>Dessert</option>
-          <option>Lunch</option>
-          <option>Dinner</option>
+          <option
+            v-for="option in categoryOptions"
+            :key="option"
+            :value="option"
+          >
+            {{ option }}
+          </option>
         </select>
       </div>
     </div>

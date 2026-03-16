@@ -39,6 +39,7 @@ function getTokenAndUserId(): { token: string; userId: string } {
   if (!userId) {
     throw new Error("User ID missing");
   }
+
   return { token, userId };
 }
 
@@ -49,6 +50,10 @@ const validateRecipe = (recipe: NewRecipe): void => {
 
   if (!recipe.description.trim()) {
     throw new Error("Recipe description is required");
+  }
+
+  if (!recipe.cuisine.trim()) {
+    throw new Error("Recipe category is required");
   }
 
   if (!recipe.ingredients.some((item) => item.trim())) {
@@ -69,7 +74,7 @@ function setDefaultRecipeValues(recipe: NewRecipe, userId: string) {
     prepTimeMinutes: recipe.prepTimeMinutes ?? 0,
     cookTimeMinutes: recipe.cookTimeMinutes ?? 0,
     servings: recipe.servings ?? 1,
-    cuisine: recipe.cuisine || "International",
+    cuisine: recipe.cuisine || "Dinner",
     isPublic: recipe.isPublic ?? true,
     imageUrl: recipe.imageUrl || "",
     imageFile: recipe.imageFile ?? null,
@@ -98,15 +103,12 @@ export const useRecipes = () => {
       }
 
       const data: Recipe[] = await response.json();
-
       const savedIds = getSavedRecipeIds();
 
       recipes.value = data.map((recipe) => ({
         ...recipe,
         saved: savedIds.includes(recipe._id),
       }));
-
-      console.log("Recipes fetched:", recipes.value);
     } catch (err) {
       error.value = (err as Error).message;
     } finally {
@@ -124,99 +126,109 @@ export const useRecipes = () => {
     recipe.saved = !recipe.saved;
 
     const savedIds = recipes.value.filter((r) => r.saved).map((r) => r._id);
-
     setSavedRecipeIds(savedIds);
   };
 
   /**
    * Create new recipe
    */
-  async function addRecipe(newRecipe: NewRecipe) {
-    validateRecipe(newRecipe);
+  const addRecipe = async (newRecipe: NewRecipe): Promise<Recipe> => {
+    try {
+      error.value = null;
 
-    const auth = getTokenAndUserId();
+      validateRecipe(newRecipe);
 
-    const recipe = setDefaultRecipeValues(newRecipe, auth.userId);
+      const auth = getTokenAndUserId();
+      const recipe = setDefaultRecipeValues(newRecipe, auth.userId);
 
+      const formData = new FormData();
+      formData.append("title", recipe.title);
+      formData.append("description", recipe.description);
+      formData.append("prepTimeMinutes", String(recipe.prepTimeMinutes));
+      formData.append("cookTimeMinutes", String(recipe.cookTimeMinutes));
+      formData.append("servings", String(recipe.servings));
+      formData.append("cuisine", recipe.cuisine);
+      formData.append("isPublic", String(recipe.isPublic));
+      formData.append("ingredients", JSON.stringify(recipe.ingredients));
+      formData.append("instructions", JSON.stringify(recipe.instructions));
+
+      if (recipe.imageFile) {
+        formData.append("photo", recipe.imageFile);
+      } else if (recipe.imageUrl) {
+        formData.append("imageUrl", recipe.imageUrl);
+      }
+
+      const response = await fetch(`${API_URL}/api/recipes`, {
+        method: "POST",
+        headers: {
+          "auth-token": auth.token,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || "Failed to add recipe.");
+      }
+
+      const createdRecipe: Recipe = await response.json();
+
+      recipes.value.unshift({
+        ...createdRecipe,
+        saved: false,
+      });
+
+      return createdRecipe;
+    } catch (err) {
+      error.value = (err as Error).message;
+      throw err;
+    }
+  };
+
+  /**
+   * Update recipe on server
+   */
+  const updateRecipeOnServer = async (
+    id: string,
+    updatedRecipe: NewRecipe,
+    token: string,
+  ): Promise<Recipe> => {
     const formData = new FormData();
-    formData.append("title", recipe.title);
-    formData.append("description", recipe.description);
-    formData.append("prepTimeMinutes", String(recipe.prepTimeMinutes));
-    formData.append("cookTimeMinutes", String(recipe.cookTimeMinutes));
-    formData.append("servings", String(recipe.servings));
-    formData.append("cuisine", recipe.cuisine);
-    formData.append("isPublic", String(recipe.isPublic));
-    formData.append("ingredients", JSON.stringify(recipe.ingredients));
-    formData.append("instructions", JSON.stringify(recipe.instructions));
+    formData.append("title", updatedRecipe.title);
+    formData.append("description", updatedRecipe.description);
+    formData.append("prepTimeMinutes", String(updatedRecipe.prepTimeMinutes));
+    formData.append("cookTimeMinutes", String(updatedRecipe.cookTimeMinutes));
+    formData.append("servings", String(updatedRecipe.servings));
+    formData.append("cuisine", updatedRecipe.cuisine);
+    formData.append("isPublic", String(updatedRecipe.isPublic));
+    formData.append("ingredients", JSON.stringify(updatedRecipe.ingredients));
+    formData.append("instructions", JSON.stringify(updatedRecipe.instructions));
 
-    if (recipe.imageFile) {
-      formData.append("photo", recipe.imageFile);
-    } else if (recipe.imageUrl) {
-      formData.append("imageUrl", recipe.imageUrl);
+    if (updatedRecipe.imageFile) {
+      formData.append("photo", updatedRecipe.imageFile);
+    } else if (updatedRecipe.imageUrl) {
+      formData.append("imageUrl", updatedRecipe.imageUrl);
     }
 
-    const response = await fetch(`${API_URL}/api/recipes`, {
-      method: "POST",
+    const response = await fetch(`${API_URL}/api/recipes/${id}`, {
+      method: "PUT",
       headers: {
-        "auth-token": auth.token,
+        "auth-token": token,
       },
       body: formData,
     });
 
     if (!response.ok) {
-      const message = await response.text();
-      throw new Error(message || "Failed to add recipe.");
+      const err = await response.text();
+      throw new Error(err || "Failed to update recipe");
     }
 
-    const createdRecipe = await response.json();
+    return await response.json();
+  };
 
-    recipes.value.unshift({
-      ...createdRecipe,
-      saved: false,
-    });
-
-    return createdRecipe;
-  }
-
-  //Update
-  const updateRecipeOnServer = async (
-  id: string,
-  updatedRecipe: NewRecipe,
-  token: string,
-): Promise<Recipe> => {
-  const formData = new FormData();
-  formData.append("title", updatedRecipe.title);
-  formData.append("description", updatedRecipe.description);
-  formData.append("prepTimeMinutes", String(updatedRecipe.prepTimeMinutes));
-  formData.append("cookTimeMinutes", String(updatedRecipe.cookTimeMinutes));
-  formData.append("servings", String(updatedRecipe.servings));
-  formData.append("cuisine", updatedRecipe.cuisine);
-  formData.append("isPublic", String(updatedRecipe.isPublic));
-  formData.append("ingredients", JSON.stringify(updatedRecipe.ingredients));
-  formData.append("instructions", JSON.stringify(updatedRecipe.instructions));
-
-  if (updatedRecipe.imageFile) {
-    formData.append("photo", updatedRecipe.imageFile);
-  } else if (updatedRecipe.imageUrl) {
-    formData.append("imageUrl", updatedRecipe.imageUrl);
-  }
-
-  const response = await fetch(`${API_URL}/api/recipes/${id}`, {
-    method: "PUT",
-    headers: {
-      "auth-token": token,
-    },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(err || "Failed to update recipe");
-  }
-
-  return await response.json();
-};
-
+  /**
+   * Update local recipe state
+   */
   const updateRecipeInState = (id: string, updatedRecipe: Recipe): void => {
     const index = recipes.value.findIndex((recipe) => recipe._id === id);
 
@@ -228,6 +240,9 @@ export const useRecipes = () => {
     }
   };
 
+  /**
+   * Update recipe
+   */
   const updateRecipe = async (
     id: string,
     recipeData: NewRecipe,
@@ -251,7 +266,9 @@ export const useRecipes = () => {
     }
   };
 
-  //Delete
+  /**
+   * Delete recipe from server
+   */
   const deleteRecipeFromServer = async (
     id: string,
     token: string,
@@ -265,16 +282,20 @@ export const useRecipes = () => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.log("recipe not deleted");
       throw new Error(errorText || "Failed to delete recipe");
     }
   };
 
+  /**
+   * Remove recipe from local state
+   */
   const removeRecipeFromState = (id: string): void => {
     recipes.value = recipes.value.filter((recipe) => recipe._id !== id);
-    console.log("Recipe deleted from state:", id);
   };
 
+  /**
+   * Delete recipe
+   */
   const deleteRecipe = async (id: string): Promise<void> => {
     try {
       error.value = null;
@@ -282,8 +303,6 @@ export const useRecipes = () => {
       const { token } = getTokenAndUserId();
       await deleteRecipeFromServer(id, token);
       removeRecipeFromState(id);
-
-      console.log("id test", id);
     } catch (err) {
       error.value = (err as Error).message;
     }
