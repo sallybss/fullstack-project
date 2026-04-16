@@ -302,7 +302,7 @@ function handleSubmit() {
 .contact-form textarea {
   width: 100%;
   border: 1px solid #ece4da;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #fffdfa;
   padding: 14px 16px;
   color: #2e2824;
@@ -332,7 +332,7 @@ function handleSubmit() {
   gap: 10px;
   width: 100%;
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   padding: 14px 18px;
   background: #e37749;
   color: #fff;

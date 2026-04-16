@@ -21,6 +21,7 @@
             {{ n <= roundedRating ? "★" : "☆" }}
           </span>
         </span>
+        <span class="ratingAverage">{{ formattedAverageRating }}</span>
         <span class="ratingCount">({{ ratingCount }})</span>
       </div>
     </div>
@@ -92,6 +93,11 @@ const totalTime = computed(() => {
 // Uses backend rating summary if available
 const averageRating = computed(() => {
   return props.recipe.ratingSummary?.average ?? 0;
+});
+
+const formattedAverageRating = computed(() => {
+  if (!ratingCount.value) return "0.0";
+  return averageRating.value.toFixed(1);
 });
 
 const roundedRating = computed(() => {
@@ -180,6 +186,12 @@ function handleImageError(event: Event) {
 .ratingCount {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.45);
+}
+
+.ratingAverage {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.62);
 }
 
 .card__title {

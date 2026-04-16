@@ -276,6 +276,10 @@ function goToSignUp() {
   color: white;
 }
 
+.chip--active:hover {
+  color: white;
+}
+
 @media (max-width: 700px) {
   .section__actions {
     align-items: stretch;

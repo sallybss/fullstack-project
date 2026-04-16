@@ -29,7 +29,6 @@
 
         <nav class="footer__links" aria-label="Footer links">
           <a class="footer__link" href="#">Privacy Policy</a>
-          <a class="footer__link" href="#">Terms of Service</a>
         </nav>
       </div>
     </div>
@@ -130,8 +129,7 @@
 .footer__link {
   font-size: 12px;
   color: rgba(0, 0, 0, 0.55);
-  text-decoration: underline;
-  text-underline-offset: 3px;
+  text-decoration: none;
 }
 
 .footer__link:hover {
