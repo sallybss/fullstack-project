@@ -102,13 +102,7 @@ const ratingCount = computed(() => {
   return props.recipe.ratingSummary?.count ?? 0;
 });
 
-// Guests can browse cards, but protected actions trigger auth modal
 function handleViewClick() {
-  if (!isLoggedIn.value) {
-    emit("auth-required");
-    return;
-  }
-
   router.push({
     name: "recipe",
     params: { id: props.recipe._id },

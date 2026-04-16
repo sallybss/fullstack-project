@@ -19,16 +19,22 @@
 
       <div class="actions">
         <BaseButton
+          v-if="showFollowAction"
+          :variant="isFollowing ? 'outline' : 'primary'"
+          class="actionBtn"
+          type="button"
+          @click="$emit('toggle-follow')"
+        >
+          {{ isFollowing ? "Following" : "Follow" }}
+        </BaseButton>
+
+        <BaseButton
           variant="outline"
           class="actionBtn"
           type="button"
           @click="goToProfile"
         >
           View profile
-        </BaseButton>
-
-        <BaseButton variant="primary" class="actionBtn" type="button">
-          Follow
         </BaseButton>
       </div>
     </div>
@@ -114,11 +120,14 @@ import type { Recipe } from "../../interfaces/recipe";
 
 const props = defineProps<{
   recipe: Recipe;
+  isFollowing?: boolean;
+  showFollowAction?: boolean;
 }>();
 
 defineEmits<{
   (e: "back"): void;
   (e: "toggle-save", id: string): void;
+  (e: "toggle-follow"): void;
 }>();
 
 const router = useRouter();

@@ -1,0 +1,10 @@
+{
+  "name": "fullstack-project-workspace",
+  "private": true,
+  "scripts": {
+    "setup": "./scripts/ensure-deps.sh",
+    "doctor": "./scripts/ensure-deps.sh --check",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run start-dev"
+  }
+}

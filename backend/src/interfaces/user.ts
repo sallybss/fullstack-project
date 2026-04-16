@@ -1,4 +1,5 @@
 export type UserRole = "user" | "admin";
+export type UserStatus = "active" | "blocked";
 
 export interface IUser {
   _id?: string;
@@ -8,6 +9,7 @@ export interface IUser {
   bio?: string;
   avatarUrl?: string;
   role: UserRole;
+  status: UserStatus;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -36,6 +38,6 @@ export interface IUserPublicProfile {
   bio?: string;
   avatarUrl?: string;
   role: UserRole;
+  status: UserStatus;
   createdAt: Date;
 }
-

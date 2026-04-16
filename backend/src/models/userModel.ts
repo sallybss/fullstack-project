@@ -8,6 +8,7 @@ const userSchema = new Schema(
     bio: { type: String, default: "" },
     avatarUrl: { type: String, default: "" },
     role: { type: String, enum: ["user", "admin"], default: "user" },
+    status: { type: String, enum: ["active", "blocked"], default: "active" },
     favorites: [{ type: Schema.Types.ObjectId, ref: "Recipe", default: [] }],
   },
   { timestamps: true }

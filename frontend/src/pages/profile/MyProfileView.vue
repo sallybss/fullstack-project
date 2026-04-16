@@ -9,108 +9,167 @@ import AdvancedRecipeCard from "../../components/recipes/AdvancedRecipeCard.vue"
 
 import { useRecipes } from "../../modules/useRecipes";
 import { useUser } from "../../modules/auth/useUser";
+import type { Recipe } from "../../interfaces/recipe";
 
 const router = useRouter();
+const API_URL = import.meta.env.VITE_API_URL;
 
-const { recipes, error, loading, fetchRecipes, toggleSave, deleteRecipe } =
-  useRecipes();
+const { error, toggleSave, deleteRecipe } = useRecipes();
+const { user, profile, fetchCurrentUser } = useUser();
 
-const { user } = useUser();
-
-/**
- * Current logged-in user id from localStorage
- */
-const currentUserId = ref<string | null>(localStorage.getItem("userIDToken"));
-
-/**
- * Back navigation
- */
-function goBack() {
-  router.back();
-}
-
-/**
- * Fetch recipes when page loads
- */
-onMounted(async () => {
-  await fetchRecipes();
-});
-
-/**
- * Current user display data
- * Uses real auth user if available, otherwise safe fallbacks
- */
-const me = computed(() => {
-  const username = user.value?.username || "User";
-  const email = user.value?.email || "";
-  const initials = username
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-
-  return {
-    id: currentUserId.value || "",
-    name: username,
-    initials: initials || "U",
-    email,
-    memberSince: "Recently joined",
-    recipesPosted: 0,
-    followers: 0,
-  };
-});
-
-/**
- * Only current user's recipes
- */
-const myRecipes = computed(() =>
-  recipes.value.filter((recipe) => recipe.owner?._id === currentUserId.value),
-);
-
-/**
- * Pagination
- */
-const pageSize = 8;
 const page = ref(1);
+const pageSize = 8;
+const loadingRecipes = ref(true);
+const myRecipes = ref<Recipe[]>([]);
+const savedRecipes = ref<Recipe[]>([]);
+const followers = ref<Array<{ _id: string; username: string }>>([]);
+const following = ref<Array<{ _id: string; username: string }>>([]);
+const activeSection = ref<"posts" | "saved">("posts");
+const peopleModal = ref<"followers" | "following" | null>(null);
 
-const totalPages = computed(() =>
-  Math.max(1, Math.ceil(myRecipes.value.length / pageSize)),
-);
+const totalPages = computed(() => Math.max(1, Math.ceil(myRecipes.value.length / pageSize)));
 
 const paged = computed(() => {
   const start = (page.value - 1) * pageSize;
   return myRecipes.value.slice(start, start + pageSize);
 });
 
-/**
- * Edit recipe
- * Update route if your edit page uses a different path
- */
+const pagedSaved = computed(() => {
+  const start = (page.value - 1) * pageSize;
+  return savedRecipes.value.slice(start, start + pageSize);
+});
+
+const activeTotal = computed(() =>
+  activeSection.value === "posts" ? myRecipes.value.length : savedRecipes.value.length,
+);
+
+const memberSince = computed(() => {
+  if (!user.value?.createdAt) return "Recently joined";
+  return new Date(user.value.createdAt).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+  });
+});
+
+const initials = computed(() => {
+  const username = user.value?.username || "User";
+  return username
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+});
+
+const isAdmin = computed(() => user.value?.role === "admin");
+
+onMounted(async () => {
+  await fetchCurrentUser();
+  await Promise.all([loadMyRecipes(), loadSavedRecipes(), loadConnections()]);
+});
+
+function goBack() {
+  router.back();
+}
+
 function editRecipe(id: string) {
   router.push({ name: "edit-recipe", params: { id } });
 }
 
-/**
- * Delete recipe
- */
 async function handleDeleteRecipe(id: string) {
-  const ok = window.confirm("Delete this recipe?");
-  if (!ok) return;
+  if (!window.confirm("Delete this recipe?")) return;
 
   await deleteRecipe(id);
+  myRecipes.value = myRecipes.value.filter((recipe) => recipe._id !== id);
 
   if (page.value > totalPages.value) {
     page.value = totalPages.value;
   }
 }
 
-/**
- * Edit profile placeholder
- * Replace later when profile edit page exists
- */
 function goToEditProfile() {
-  router.push("/profile/edit");
+  router.push({ name: "my-profile-advanced" });
+}
+
+function openPeopleModal(type: "followers" | "following") {
+  peopleModal.value = type;
+}
+
+function closePeopleModal() {
+  peopleModal.value = null;
+}
+
+async function loadMyRecipes() {
+  if (!user.value?._id) return;
+
+  try {
+    loadingRecipes.value = true;
+
+    const response = await fetch(`${API_URL}/api/profiles/${user.value._id}/recipes`);
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to fetch your recipes");
+    }
+
+    const payload = await response.json();
+    myRecipes.value = payload.data ?? [];
+  } finally {
+    loadingRecipes.value = false;
+  }
+}
+
+async function loadConnections() {
+  if (!user.value?._id) return;
+
+  const [followersResponse, followingResponse] = await Promise.all([
+    fetch(`${API_URL}/api/profiles/${user.value._id}/followers`),
+    fetch(`${API_URL}/api/profiles/${user.value._id}/following`),
+  ]);
+
+  if (!followersResponse.ok || !followingResponse.ok) {
+    return;
+  }
+
+  const [followersPayload, followingPayload] = await Promise.all([
+    followersResponse.json(),
+    followingResponse.json(),
+  ]);
+
+  followers.value = followersPayload.data ?? [];
+  following.value = followingPayload.data ?? [];
+}
+
+async function loadSavedRecipes() {
+  try {
+    const response = await fetch(`${API_URL}/api/profiles/me/saved`, {
+      headers: {
+        "auth-token": localStorage.getItem("lsToken") || "",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to fetch saved recipes");
+    }
+
+    const payload = await response.json();
+    savedRecipes.value = (payload.data ?? []).map((recipe: Recipe) => ({
+      ...recipe,
+      saved: true,
+    }));
+  } catch {
+    savedRecipes.value = [];
+  }
+}
+
+async function handleToggleSave(recipeId: string) {
+  await toggleSave(recipeId);
+  myRecipes.value = myRecipes.value.map((recipe) =>
+    recipe._id === recipeId ? { ...recipe, saved: !recipe.saved } : recipe,
+  );
+  savedRecipes.value = savedRecipes.value
+    .map((recipe) =>
+      recipe._id === recipeId ? { ...recipe, saved: !recipe.saved } : recipe,
+    )
+    .filter((recipe) => recipe.saved);
 }
 </script>
 
@@ -120,13 +179,9 @@ function goToEditProfile() {
 
     <main class="container">
       <div class="card">
-        <!-- TOP AREA -->
         <div class="top">
-          <!-- LEFT: back + tabs (stacked) -->
           <div class="topLeft">
-            <button class="back" type="button" @click="goBack">
-              ← Go back
-            </button>
+            <button class="back" type="button" @click="goBack">← Go back</button>
 
             <div class="tabs">
               <button class="tab is-active" type="button">Profile</button>
@@ -140,6 +195,7 @@ function goToEditProfile() {
               </button>
 
               <button
+                v-if="isAdmin"
                 class="tab"
                 type="button"
                 @click="router.push({ name: 'admin-panel' })"
@@ -150,75 +206,131 @@ function goToEditProfile() {
           </div>
         </div>
 
-        <!-- HEADER -->
         <div class="header">
           <div class="left">
-            <div class="avatar">{{ me.initials }}</div>
+            <div class="avatar">{{ initials }}</div>
 
             <div class="meta">
-              <h1 class="name">{{ me.name }}</h1>
+              <h1 class="name">{{ user?.username || "User" }}</h1>
               <p class="sub">
-                Member since {{ me.memberSince }} ·
-                {{ me.recipesPosted }} recipes posted
+                Member since {{ memberSince }} · {{ myRecipes.length }} recipes posted
               </p>
             </div>
           </div>
 
-          <!-- RIGHT: edit + stats (same row) -->
           <div class="topRight">
-            <div class="stat">
+            <button class="stat stat--button" type="button" @click="openPeopleModal('followers')">
               <i class="pi pi-users"></i>
-              <span
-                ><b>{{ me.followers }}</b> followers</span
-              >
-            </div>
+              <span><b>{{ profile?.followers?.length || 0 }}</b> followers</span>
+            </button>
+
+            <button class="stat stat--button" type="button" @click="openPeopleModal('following')">
+              <i class="pi pi-share-alt"></i>
+              <span><b>{{ following.length }}</b> following</span>
+            </button>
 
             <div class="stat">
               <i class="pi pi-book"></i>
-              <span
-                ><b>{{ myRecipes.length }}</b> recipes</span
-              >
+              <span><b>{{ myRecipes.length }}</b> recipes</span>
             </div>
 
-            <BaseButton
-              variant="primary"
-              type="button"
-              @click="goToEditProfile"
-            >
+            <div class="stat">
+              <i class="pi pi-bookmark"></i>
+              <span><b>{{ savedRecipes.length }}</b> saved</span>
+            </div>
+
+            <BaseButton variant="primary" type="button" @click="goToEditProfile">
               Edit profile
             </BaseButton>
           </div>
         </div>
 
         <p class="bio">
-          Passionate home chef exploring flavors from around the world. I love
-          creating simple yet elegant dishes that bring people together.
+          {{ profile?.bio || "Add a bio from the advanced profile page." }}
         </p>
 
-        <p v-if="loading">Loading recipes...</p>
+        <div class="content-tabs">
+          <button
+            class="content-tab"
+            :class="{ 'content-tab--active': activeSection === 'posts' }"
+            type="button"
+            @click="activeSection = 'posts'"
+          >
+            Posts
+          </button>
+          <button
+            class="content-tab"
+            :class="{ 'content-tab--active': activeSection === 'saved' }"
+            type="button"
+            @click="activeSection = 'saved'"
+          >
+            Saved
+          </button>
+        </div>
+
+        <p v-if="loadingRecipes">Loading recipes...</p>
         <p v-if="error">{{ error }}</p>
-        <!-- GRID -->
-        <section class="grid">
+
+        <div v-if="activeSection === 'posts' && !loadingRecipes && paged.length === 0" class="list-empty">
+          No recipes posted yet.
+        </div>
+
+        <div v-else-if="activeSection === 'saved' && !loadingRecipes && pagedSaved.length === 0" class="list-empty">
+          No saved recipes yet.
+        </div>
+
+        <section v-else class="grid">
           <AdvancedRecipeCard
-            v-for="r in paged"
+            v-for="r in activeSection === 'posts' ? paged : pagedSaved"
             :key="r._id"
             :recipe="r"
-            @toggle-save="toggleSave"
+            @toggle-save="handleToggleSave"
             @edit="editRecipe"
             @delete="handleDeleteRecipe"
           />
         </section>
 
-        <!-- PAGER -->
-        <div class="pager" v-if="myRecipes.length > pageSize">
+        <div class="pager" v-if="activeTotal > pageSize">
           <PaginationBar
             v-model:page="page"
             :pageSize="pageSize"
-            :total="myRecipes.length"
+            :total="activeTotal"
           />
         </div>
       </div>
     </main>
+
+    <div
+      v-if="peopleModal"
+      class="people-modal-overlay"
+      @click.self="closePeopleModal"
+    >
+      <div class="people-modal">
+        <div class="people-modal__head">
+          <h2>{{ peopleModal === 'followers' ? 'Followers' : 'Following' }}</h2>
+          <button class="people-modal__close" type="button" @click="closePeopleModal">×</button>
+        </div>
+
+        <p
+          v-if="(peopleModal === 'followers' ? followers : following).length === 0"
+          class="list-empty"
+        >
+          {{ peopleModal === 'followers' ? 'No followers yet.' : 'Not following anyone yet.' }}
+        </p>
+
+        <div v-else class="people-list">
+          <button
+            v-for="person in (peopleModal === 'followers' ? followers : following)"
+            :key="person._id"
+            class="people-row"
+            type="button"
+            @click="router.push({ name: 'profile', params: { id: person._id } }); closePeopleModal();"
+          >
+            {{ person.username }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -242,7 +354,6 @@ function goToEditProfile() {
   padding: 22px;
 }
 
-/* === TOP LAYOUT (matches your Figma intent) === */
 .top {
   display: flex;
   align-items: flex-start;
@@ -252,7 +363,7 @@ function goToEditProfile() {
 
 .topLeft {
   display: flex;
-  flex-direction: column; /* ✅ tabs under back */
+  flex-direction: column;
   gap: 14px;
   min-width: 240px;
 }
@@ -264,13 +375,8 @@ function goToEditProfile() {
   padding: 6px 0;
   cursor: pointer;
   font-size: 14px;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
 }
 
-/* tabs */
 .tabs {
   display: inline-flex;
   gap: 10px;
@@ -278,46 +384,19 @@ function goToEditProfile() {
 
 .tab {
   border: 1px solid rgba(255, 114, 76, 0.35);
-  background: transparent;
-  color: rgba(255, 114, 76, 0.9);
+  background: #fff;
   border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 12px;
-  font-weight: 700;
+  padding: 10px 16px;
   cursor: pointer;
 }
 
 .tab.is-active {
-  background: var(--accent, #ff724c);
-  border-color: var(--accent, #ff724c);
+  background: #ff724c;
   color: #fff;
 }
 
-/* right side buttons (edit + stats aligned) */
-.topRight {
-  display: inline-flex;
-  align-items: center; /* ✅ same baseline */
-  gap: 12px;
-  justify-content: flex-end;
-  flex-wrap: nowrap; /* ✅ keep on same line */
-}
-
-/* stat pills */
-.stat {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #f6f6fb;
-  color: #333;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-/* === HEADER === */
 .header {
-  margin-top: 16px;
+  margin-top: 18px;
   display: flex;
   justify-content: space-between;
   gap: 18px;
@@ -331,8 +410,8 @@ function goToEditProfile() {
 }
 
 .avatar {
-  width: 54px;
-  height: 54px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: #f1f1f6;
   display: grid;
@@ -350,7 +429,6 @@ function goToEditProfile() {
   margin: 0;
   font-size: 24px;
   font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 .sub {
@@ -359,20 +437,67 @@ function goToEditProfile() {
   font-size: 13px;
 }
 
+.topRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.stat {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f6f6fb;
+  color: #333;
+  font-size: 13px;
+}
+
+.stat--button {
+  border: 0;
+  cursor: pointer;
+}
+
 .bio {
-  margin: 14px 0 0;
+  margin: 14px 0 18px;
   color: #666;
   font-size: 14px;
   line-height: 1.5;
 }
 
-/* grid */
+.list-empty {
+  color: #888;
+  margin: 12px 0 0;
+}
+
+.content-tabs {
+  display: inline-flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.content-tab {
+  border: 1px solid rgba(255, 114, 76, 0.24);
+  background: white;
+  color: #555;
+  border-radius: 999px;
+  padding: 10px 16px;
+  cursor: pointer;
+}
+
+.content-tab--active {
+  background: #ff724c;
+  border-color: #ff724c;
+  color: white;
+}
+
 .grid {
-  margin-top: 18px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
-  align-items: start;
 }
 
 .pager {
@@ -381,7 +506,57 @@ function goToEditProfile() {
   margin-top: 18px;
 }
 
-/* responsive */
+.people-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  z-index: 30;
+}
+
+.people-modal {
+  width: min(460px, 92vw);
+  max-height: min(70vh, 640px);
+  overflow: auto;
+  background: white;
+  border-radius: 24px;
+  padding: 20px;
+}
+
+.people-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.people-modal__head h2 {
+  margin: 0;
+}
+
+.people-modal__close {
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  cursor: pointer;
+}
+
+.people-list {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
+.people-row {
+  border: 1px solid #ececec;
+  background: #fafafa;
+  border-radius: 16px;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+}
+
 @media (max-width: 1100px) {
   .grid {
     grid-template-columns: repeat(3, 1fr);
@@ -389,14 +564,13 @@ function goToEditProfile() {
 }
 
 @media (max-width: 900px) {
-  .grid {
-    grid-template-columns: repeat(2, 1fr);
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
-  /* allow wrapping on small screens */
-  .topRight {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
@@ -404,17 +578,5 @@ function goToEditProfile() {
   .grid {
     grid-template-columns: 1fr;
   }
-}
-
-.info {
-  text-align: center;
-  margin-top: 20px;
-  color: #777;
-}
-
-.error {
-  text-align: center;
-  margin-top: 20px;
-  color: #e53935;
 }
 </style>

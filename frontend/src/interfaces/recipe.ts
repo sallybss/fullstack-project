@@ -1,3 +1,12 @@
+export type RecipeComment = {
+  _id: string;
+  user: string;
+  username: string;
+  text: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Recipe = {
   _id: string;
   title: string;
@@ -16,6 +25,7 @@ export type Recipe = {
     average: number;
     count: number;
   };
+  comments?: RecipeComment[];
   saved?: boolean;
   
   owner?: {

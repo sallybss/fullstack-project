@@ -1,7 +1,7 @@
 import { type Request, type Response } from "express";
 import { Types } from "mongoose";
 
-import { connect, disconnect } from "../repository/database";
+import { connect } from "../repository/database";
 import { profileModel } from "../models/profileModel";
 import { userModel } from "../models/userModel";
 import { recipeModel } from "../models/recipeModel";
@@ -33,8 +33,8 @@ function profileSelect() {
   return "user username bio avatarUrl followers following createdAt updatedAt";
 }
 
-function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; avatarUrl?: string } {
-  const update: { username?: string; bio?: string; avatarUrl?: string } = {};
+function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; avatarUrl?: string; email?: string } {
+  const update: { username?: string; bio?: string; avatarUrl?: string; email?: string } = {};
 
   if (body.username !== undefined) {
     if (typeof body.username !== "string" || body.username.trim().length < 2) {
@@ -54,6 +54,15 @@ function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; av
       throw new Error("avatarUrl must be a valid http/https URL");
     }
     update.avatarUrl = String(body.avatarUrl ?? "").trim();
+  }
+
+  if (body.email !== undefined) {
+    const email = String(body.email || "").trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error("email must be a valid email address");
+    }
+    update.email = email;
   }
 
   return update;
@@ -86,8 +95,6 @@ export async function getMyProfile(req: Request, res: Response) {
     res.status(200).json({ error: null, data: profile });
   } catch (err) {
     res.status(500).send("Error retrieving my profile. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -112,6 +119,19 @@ export async function updateMyProfile(req: Request, res: Response) {
     if (update.username) {
       await userModel.findByIdAndUpdate(authUser.id, { $set: { username: update.username } });
     }
+    if (update.email) {
+      const existing = await userModel.findOne({
+        email: update.email,
+        _id: { $ne: authUser.id },
+      }).select("_id");
+
+      if (existing) {
+        res.status(400).json({ error: "Email already exists." });
+        return;
+      }
+
+      await userModel.findByIdAndUpdate(authUser.id, { $set: { email: update.email } });
+    }
 
     const updatedProfile = await profileModel
       .findByIdAndUpdate(profile._id, { $set: update }, { new: true })
@@ -121,10 +141,8 @@ export async function updateMyProfile(req: Request, res: Response) {
   } catch (err: any) {
     const message = String(err?.message || err);
     const isValidationError =
-      message.includes("username") || message.includes("bio") || message.includes("avatarUrl");
+      message.includes("username") || message.includes("bio") || message.includes("avatarUrl") || message.includes("email");
     res.status(isValidationError ? 400 : 500).send(message);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -148,8 +166,6 @@ export async function getProfileByUserId(req: Request, res: Response) {
     res.status(200).json({ error: null, data: profile });
   } catch (err) {
     res.status(500).send("Error retrieving profile. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -205,8 +221,6 @@ export async function followUserProfile(req: Request, res: Response) {
     res.status(200).json({ error: null, data: updatedMine });
   } catch (err) {
     res.status(500).send("Error following profile. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -247,8 +261,6 @@ export async function unfollowUserProfile(req: Request, res: Response) {
     res.status(200).json({ error: null, data: updatedMine });
   } catch (err) {
     res.status(500).send("Error unfollowing profile. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -275,8 +287,6 @@ export async function getProfileFollowers(req: Request, res: Response) {
     res.status(200).json({ error: null, data: followers });
   } catch (err) {
     res.status(500).send("Error retrieving followers. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -303,8 +313,6 @@ export async function getProfileFollowing(req: Request, res: Response) {
     res.status(200).json({ error: null, data: following });
   } catch (err) {
     res.status(500).send("Error retrieving following profiles. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -329,8 +337,6 @@ export async function getMySavedRecipes(req: Request, res: Response) {
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
     res.status(500).send("Error retrieving saved recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -355,8 +361,6 @@ export async function getSavedRecipesByUserId(req: Request, res: Response) {
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
     res.status(500).send("Error retrieving saved recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -377,7 +381,5 @@ export async function getRecipesByUserId(req: Request, res: Response) {
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
     res.status(500).send("Error retrieving user recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }

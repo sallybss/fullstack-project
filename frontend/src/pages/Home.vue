@@ -7,17 +7,32 @@
 
       <section class="section">
         <div class="section__actions">
-          <div class="chips">
-            <button
-              v-for="chip in categoryChips"
-              :key="chip"
-              type="button"
-              class="chip"
-              :class="{ 'chip--active': selectedCategory === chip }"
-              @click="selectedCategory = chip"
-            >
-              {{ chip }}
-            </button>
+          <div class="categoryControls">
+            <label class="categorySelect" for="mobile-category">
+              <span class="categorySelect__label">Category</span>
+              <select id="mobile-category" v-model="selectedCategory">
+                <option
+                  v-for="chip in categoryChips"
+                  :key="chip"
+                  :value="chip"
+                >
+                  {{ chip }}
+                </option>
+              </select>
+            </label>
+
+            <div class="chips">
+              <button
+                v-for="chip in categoryChips"
+                :key="chip"
+                type="button"
+                class="chip"
+                :class="{ 'chip--active': selectedCategory === chip }"
+                @click="selectedCategory = chip"
+              >
+                {{ chip }}
+              </button>
+            </div>
           </div>
 
           <BaseButton
@@ -91,7 +106,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useRecipes } from "../modules/useRecipes";
@@ -118,20 +133,19 @@ onMounted(() => {
   fetchRecipes();
 });
 
-// Filters recipes by title and selected chip
-const filteredRecipes = computed(() => {
-  const normalizedQuery = query.value.trim().toLowerCase();
+let searchTimeout: number | undefined;
 
-  return recipes.value.filter((recipe) => {
-    const matchesQuery = recipe.title.toLowerCase().includes(normalizedQuery);
-
-    const matchesCategory =
-      selectedCategory.value === "All" ||
-      recipe.cuisine?.toLowerCase() === selectedCategory.value.toLowerCase();
-
-    return matchesQuery && matchesCategory;
-  });
+watch([query, selectedCategory], ([nextQuery, nextCategory]) => {
+  window.clearTimeout(searchTimeout);
+  searchTimeout = window.setTimeout(() => {
+    void fetchRecipes({
+      title: nextQuery,
+      cuisine: nextCategory === "All" ? "" : nextCategory,
+    });
+  }, 250);
 });
+
+const filteredRecipes = computed(() => recipes.value);
 
 const emptyStateMessage = computed(() => {
   if (selectedCategory.value === "All" && !query.value.trim()) {
@@ -204,6 +218,33 @@ function goToSignUp() {
   flex-wrap: wrap;
 }
 
+.categoryControls {
+  flex: 1 1 720px;
+}
+
+.categorySelect {
+  display: none;
+}
+
+.categorySelect__label {
+  display: block;
+  margin-bottom: 8px;
+  color: #676767;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.categorySelect select {
+  width: 100%;
+  height: 46px;
+  border: 1px solid #e4e4e7;
+  border-radius: 14px;
+  background: #fff;
+  color: #444;
+  padding: 0 16px;
+  font: inherit;
+}
+
 .chips {
   display: flex;
   align-items: center;
@@ -233,6 +274,28 @@ function goToSignUp() {
   background: #ff724c;
   border-color: #ff724c;
   color: white;
+}
+
+@media (max-width: 700px) {
+  .section__actions {
+    align-items: stretch;
+  }
+
+  .categoryControls {
+    flex-basis: 100%;
+  }
+
+  .categorySelect {
+    display: block;
+  }
+
+  .chips {
+    display: none;
+  }
+
+  .section :deep(.btn) {
+    width: 100%;
+  }
 }
 
 .empty-state {

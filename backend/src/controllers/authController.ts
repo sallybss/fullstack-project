@@ -5,7 +5,8 @@ import Joi, { type ValidationResult } from "joi";
 
 import { userModel } from "../models/userModel";
 import { profileModel } from "../models/profileModel";
-import { connect, disconnect } from "../repository/database";
+import { recipeModel } from "../models/recipeModel";
+import { connect } from "../repository/database";
 import { type IUser } from "../interfaces/user";
 
 function isDbUnavailableError(error: any): boolean {
@@ -42,6 +43,7 @@ export async function registerUser(req: Request, res: Response) {
       email,
       password: passwordHashed,
       role: "user",
+      status: "active",
     });
 
     const savedUser = await userObject.save();
@@ -72,8 +74,6 @@ export async function registerUser(req: Request, res: Response) {
       return res.status(400).json({ error: `${duplicateField} already exists.` });
     }
     return res.status(500).send("Error registering user. Error: " + error);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -99,8 +99,12 @@ export async function loginUser(req: Request, res: Response) {
 
     const userId = String(user._id);
 
+    if (user.status === "blocked") {
+      return res.status(403).json({ error: "Account is blocked." });
+    }
+
     const token = jwt.sign(
-      { id: userId, username: user.username, email: user.email },
+      { id: userId, username: user.username, email: user.email, role: user.role },
       TOKEN_SECRET,
       { expiresIn: "2h" }
     );
@@ -115,8 +119,6 @@ export async function loginUser(req: Request, res: Response) {
       return res.status(503).json({ error: "Database unavailable. Check DBHOST/Atlas network access." });
     }
     return res.status(500).send("Error logging in user. Error: " + error);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -126,7 +128,7 @@ export async function getAllUsers(_req: Request, res: Response) {
 
     const users = await userModel
       .find({})
-      .select("_id username email bio avatarUrl role favorites createdAt updatedAt");
+      .select("_id username email bio avatarUrl role status favorites createdAt updatedAt");
 
     return res.status(200).json({ error: null, data: users });
   } catch (error: any) {
@@ -135,12 +137,164 @@ export async function getAllUsers(_req: Request, res: Response) {
       return res.status(503).json({ error: "Database unavailable. Check DBHOST/Atlas network access." });
     }
     return res.status(500).send("Error retrieving users. Error: " + error);
-  } finally {
-    await disconnect();
   }
 }
 
-export function verifyToken(req: Request, res: Response, next: NextFunction) {
+export async function getCurrentUser(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const authUserId = (req as any).user?.id;
+    if (typeof authUserId !== "string") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const user = await userModel
+      .findById(authUserId)
+      .select("_id username email bio avatarUrl role status createdAt updatedAt");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({ error: null, data: user });
+  } catch (error: any) {
+    console.error("getCurrentUser failed:", error);
+    if (isDbUnavailableError(error)) {
+      return res.status(503).json({ error: "Database unavailable. Check DBHOST/Atlas network access." });
+    }
+    return res.status(500).send("Error retrieving current user. Error: " + error);
+  }
+}
+
+export async function changeMyPassword(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const authUserId = (req as any).user?.id;
+    if (typeof authUserId !== "string") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const currentPassword = String(req.body?.currentPassword || "");
+    const newPassword = String(req.body?.newPassword || "");
+
+    if (!currentPassword || !newPassword || newPassword.length < 6) {
+      return res.status(400).json({ error: "currentPassword and newPassword (min 6 chars) are required." });
+    }
+
+    const user = await userModel.findById(authUserId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
+      return res.status(400).json({ error: "Current password is incorrect." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    await user.save();
+
+    return res.status(200).json({ error: null, data: { success: true } });
+  } catch (error: any) {
+    console.error("changeMyPassword failed:", error);
+    return res.status(500).send("Error updating password. Error: " + error);
+  }
+}
+
+export async function deleteMyAccount(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const authUserId = (req as any).user?.id;
+    if (typeof authUserId !== "string") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    await Promise.all([
+      recipeModel.deleteMany({ owner: authUserId }),
+      profileModel.deleteOne({ user: authUserId }),
+      profileModel.updateMany({}, {
+        $pull: {
+          followers: authUserId,
+          following: authUserId,
+        },
+      }),
+      userModel.findByIdAndDelete(authUserId),
+    ]);
+
+    return res.status(200).json({ error: null, data: { success: true } });
+  } catch (error: any) {
+    console.error("deleteMyAccount failed:", error);
+    return res.status(500).send("Error deleting account. Error: " + error);
+  }
+}
+
+export async function updateUserStatus(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const userId = String(req.params.userId || "");
+    const status = String(req.body?.status || "");
+
+    if (!["active", "blocked"].includes(status)) {
+      return res.status(400).json({ error: "status must be active or blocked" });
+    }
+
+    const user = await userModel.findByIdAndUpdate(
+      userId,
+      { $set: { status } },
+      { new: true }
+    ).select("_id username email bio avatarUrl role status favorites createdAt updatedAt");
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    return res.status(200).json({ error: null, data: user });
+  } catch (error: any) {
+    console.error("updateUserStatus failed:", error);
+    return res.status(500).send("Error updating user status. Error: " + error);
+  }
+}
+
+export async function deleteUserByAdmin(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const userId = String(req.params.userId || "");
+    const authUserId = String((req as any).user?.id || "");
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    if (userId === authUserId) {
+      return res.status(400).json({ error: "Admins cannot delete themselves from this endpoint." });
+    }
+
+    await Promise.all([
+      recipeModel.deleteMany({ owner: userId }),
+      profileModel.deleteOne({ user: userId }),
+      profileModel.updateMany({}, {
+        $pull: {
+          followers: userId,
+          following: userId,
+        },
+      }),
+      userModel.findByIdAndDelete(userId),
+    ]);
+
+    return res.status(200).json({ error: null, data: { userId } });
+  } catch (error: any) {
+    console.error("deleteUserByAdmin failed:", error);
+    return res.status(500).send("Error deleting user. Error: " + error);
+  }
+}
+
+export async function verifyToken(req: Request, res: Response, next: NextFunction) {
   const bearer = req.header("Authorization");
   const legacy = req.header("auth-token");
 
@@ -156,11 +310,58 @@ export function verifyToken(req: Request, res: Response, next: NextFunction) {
     if (!TOKEN_SECRET) return res.status(500).json({ error: "Missing TOKEN_SECRET in env." });
 
     const decoded = jwt.verify(token, TOKEN_SECRET);
-    (req as any).user = decoded;
+    const authUserId = (decoded as any)?.id;
+    if (typeof authUserId !== "string") {
+      return res.status(401).json({ error: "Invalid Token" });
+    }
+
+    await connect();
+
+    const user = await userModel.findById(authUserId).select("_id username email role status");
+    if (!user) {
+      return res.status(401).json({ error: "Invalid Token" });
+    }
+    if (user.status === "blocked") {
+      return res.status(403).json({ error: "Account is blocked." });
+    }
+
+    (req as any).user = {
+      id: String(user._id),
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      status: user.status,
+    };
 
     return next();
   } catch {
     return res.status(401).json({ error: "Invalid Token" });
+  }
+}
+
+export async function verifyAdmin(req: Request, res: Response, next: NextFunction) {
+  try {
+    const authUserId = (req as any).user?.id;
+    if (typeof authUserId !== "string") {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    await connect();
+
+    const user = await userModel.findById(authUserId).select("role status");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    if (user.status === "blocked") {
+      return res.status(403).json({ error: "Blocked users cannot access this resource." });
+    }
+    if (user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required." });
+    }
+
+    return next();
+  } catch (error: any) {
+    return res.status(500).send("Error verifying admin access. Error: " + error);
   }
 }
 

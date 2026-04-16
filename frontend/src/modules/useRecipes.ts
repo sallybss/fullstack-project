@@ -1,32 +1,9 @@
 import { ref } from "vue";
-import type { Recipe, NewRecipe } from "../interfaces/recipe";
+import type { Recipe, NewRecipe, RecipeComment } from "../interfaces/recipe";
 
-/**
- * Global reactive state
- */
 const recipes = ref<Recipe[]>([]);
 const loading = ref<boolean>(false);
 const error = ref<string | null>(null);
-
-/**
- * Key used for persisting saved recipes
- */
-const SAVED_RECIPES_KEY = "savedRecipeIds";
-
-/**
- * Helper: read saved recipe ids from localStorage
- */
-function getSavedRecipeIds(): string[] {
-  const raw = localStorage.getItem(SAVED_RECIPES_KEY);
-  return raw ? JSON.parse(raw) : [];
-}
-
-/**
- * Helper: store saved recipe ids in localStorage
- */
-function setSavedRecipeIds(ids: string[]): void {
-  localStorage.setItem(SAVED_RECIPES_KEY, JSON.stringify(ids));
-}
 
 function getTokenAndUserId(): { token: string; userId: string } {
   const token = localStorage.getItem("lsToken");
@@ -65,50 +42,82 @@ const validateRecipe = (recipe: NewRecipe): void => {
   }
 };
 
-function setDefaultRecipeValues(recipe: NewRecipe, userId: string) {
-  return {
-    title: recipe.title.trim(),
-    description: recipe.description.trim(),
-    ingredients: recipe.ingredients,
-    instructions: recipe.instructions,
-    prepTimeMinutes: recipe.prepTimeMinutes ?? 0,
-    cookTimeMinutes: recipe.cookTimeMinutes ?? 0,
-    servings: recipe.servings ?? 1,
-    cuisine: recipe.cuisine || "Dinner",
-    isPublic: recipe.isPublic ?? true,
-    imageUrl: recipe.imageUrl || "",
-    imageFile: recipe.imageFile ?? null,
-    _createdBy: userId,
-  };
+function buildRecipeFormData(recipe: NewRecipe): FormData {
+  const formData = new FormData();
+  formData.append("title", recipe.title.trim());
+  formData.append("description", recipe.description.trim());
+  formData.append("prepTimeMinutes", String(recipe.prepTimeMinutes ?? 0));
+  formData.append("cookTimeMinutes", String(recipe.cookTimeMinutes ?? 0));
+  formData.append("servings", String(recipe.servings ?? 1));
+  formData.append("cuisine", recipe.cuisine);
+  formData.append("isPublic", String(recipe.isPublic ?? true));
+  formData.append("ingredients", JSON.stringify(recipe.ingredients));
+  formData.append("instructions", JSON.stringify(recipe.instructions));
+
+  if (recipe.imageFile) {
+    formData.append("photo", recipe.imageFile);
+  } else if (recipe.imageUrl) {
+    formData.append("imageUrl", recipe.imageUrl);
+  }
+
+  return formData;
 }
 
-/**
- * Recipes composable
- */
 export const useRecipes = () => {
   const API_URL = import.meta.env.VITE_API_URL;
 
-  /**
-   * Fetch all recipes from backend
-   */
-  const fetchRecipes = async (): Promise<void> => {
+  const applySavedState = async (items: Recipe[]): Promise<Recipe[]> => {
+    const favoriteIds = await fetchFavoriteIds();
+    return items.map((recipe) => ({
+      ...recipe,
+      saved: favoriteIds.includes(recipe._id),
+    }));
+  };
+
+  const fetchFavoriteIds = async (): Promise<string[]> => {
+    const token = localStorage.getItem("lsToken");
+    if (!token) return [];
+
+    const response = await fetch(`${API_URL}/api/recipes/favorites/ids`, {
+      headers: {
+        "auth-token": token,
+      },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload = await response.json();
+    return payload.data ?? [];
+  };
+
+  const fetchRecipes = async (
+    filters?: { title?: string; cuisine?: string },
+  ): Promise<void> => {
     loading.value = true;
     error.value = null;
 
     try {
-      const response = await fetch(`${API_URL}/api/recipes`);
+      const params = new URLSearchParams();
+      if (filters?.title?.trim()) {
+        params.set("title", filters.title.trim());
+      }
+      if (filters?.cuisine?.trim()) {
+        params.set("cuisine", filters.cuisine.trim());
+      }
 
-      if (!response.ok) {
+      const query = params.toString();
+      const recipesResponse = await fetch(
+        `${API_URL}/api/recipes${query ? `?${query}` : ""}`,
+      );
+
+      if (!recipesResponse.ok) {
         throw new Error("Failed to fetch recipes");
       }
 
-      const data: Recipe[] = await response.json();
-      const savedIds = getSavedRecipeIds();
-
-      recipes.value = data.map((recipe) => ({
-        ...recipe,
-        saved: savedIds.includes(recipe._id),
-      }));
+      const data: Recipe[] = await recipesResponse.json();
+      recipes.value = await applySavedState(data);
     } catch (err) {
       error.value = (err as Error).message;
     } finally {
@@ -116,63 +125,74 @@ export const useRecipes = () => {
     }
   };
 
-  /**
-   * Toggle saved state of a recipe
-   */
-  const toggleSave = (recipeId: string): void => {
-    const recipe = recipes.value.find((r) => r._id === recipeId);
-    if (!recipe) return;
+  const fetchRecipeById = async (id: string): Promise<Recipe | null> => {
+    const response = await fetch(`${API_URL}/api/recipes/${id}`);
 
-    recipe.saved = !recipe.saved;
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to fetch recipe");
+    }
 
-    const savedIds = recipes.value.filter((r) => r.saved).map((r) => r._id);
-    setSavedRecipeIds(savedIds);
+    const recipe: Recipe = await response.json();
+    const favoriteIds = await fetchFavoriteIds();
+    const mappedRecipe = {
+      ...recipe,
+      saved: favoriteIds.includes(recipe._id),
+    };
+
+    const index = recipes.value.findIndex((item) => item._id === id);
+    if (index === -1) {
+      recipes.value.push(mappedRecipe);
+    } else {
+      recipes.value[index] = mappedRecipe;
+    }
+
+    return mappedRecipe;
   };
 
-  /**
-   * Create new recipe
-   */
-  const addRecipe = async (newRecipe: NewRecipe): Promise<Recipe> => {
+  const toggleSave = async (recipeId: string): Promise<void> => {
+    const recipe = recipes.value.find((item) => item._id === recipeId);
+    if (!recipe) return;
+
+    const previous = Boolean(recipe.saved);
+    recipe.saved = !previous;
+
     try {
-      error.value = null;
-
-      validateRecipe(newRecipe);
-
-      const auth = getTokenAndUserId();
-      const recipe = setDefaultRecipeValues(newRecipe, auth.userId);
-
-      const formData = new FormData();
-      formData.append("title", recipe.title);
-      formData.append("description", recipe.description);
-      formData.append("prepTimeMinutes", String(recipe.prepTimeMinutes));
-      formData.append("cookTimeMinutes", String(recipe.cookTimeMinutes));
-      formData.append("servings", String(recipe.servings));
-      formData.append("cuisine", recipe.cuisine);
-      formData.append("isPublic", String(recipe.isPublic));
-      formData.append("ingredients", JSON.stringify(recipe.ingredients));
-      formData.append("instructions", JSON.stringify(recipe.instructions));
-
-      if (recipe.imageFile) {
-        formData.append("photo", recipe.imageFile);
-      } else if (recipe.imageUrl) {
-        formData.append("imageUrl", recipe.imageUrl);
-      }
-
-      const response = await fetch(`${API_URL}/api/recipes`, {
-        method: "POST",
+      const { token } = getTokenAndUserId();
+      const response = await fetch(`${API_URL}/api/recipes/${recipeId}/favorite`, {
+        method: previous ? "DELETE" : "POST",
         headers: {
-          "auth-token": auth.token,
+          "auth-token": token,
         },
-        body: formData,
       });
 
       if (!response.ok) {
-        const message = await response.text();
-        throw new Error(message || "Failed to add recipe.");
+        throw new Error((await response.text()) || "Failed to update saved recipe");
+      }
+    } catch (err) {
+      recipe.saved = previous;
+      error.value = (err as Error).message;
+    }
+  };
+
+  const addRecipe = async (newRecipe: NewRecipe): Promise<Recipe> => {
+    try {
+      error.value = null;
+      validateRecipe(newRecipe);
+
+      const { token } = getTokenAndUserId();
+      const response = await fetch(`${API_URL}/api/recipes`, {
+        method: "POST",
+        headers: {
+          "auth-token": token,
+        },
+        body: buildRecipeFormData(newRecipe),
+      });
+
+      if (!response.ok) {
+        throw new Error((await response.text()) || "Failed to add recipe.");
       }
 
       const createdRecipe: Recipe = await response.json();
-
       recipes.value.unshift({
         ...createdRecipe,
         saved: false,
@@ -185,95 +205,96 @@ export const useRecipes = () => {
     }
   };
 
-  /**
-   * Update recipe on server
-   */
-  const updateRecipeOnServer = async (
-    id: string,
-    updatedRecipe: NewRecipe,
-    token: string,
-  ): Promise<Recipe> => {
-    const formData = new FormData();
-    formData.append("title", updatedRecipe.title);
-    formData.append("description", updatedRecipe.description);
-    formData.append("prepTimeMinutes", String(updatedRecipe.prepTimeMinutes));
-    formData.append("cookTimeMinutes", String(updatedRecipe.cookTimeMinutes));
-    formData.append("servings", String(updatedRecipe.servings));
-    formData.append("cuisine", updatedRecipe.cuisine);
-    formData.append("isPublic", String(updatedRecipe.isPublic));
-    formData.append("ingredients", JSON.stringify(updatedRecipe.ingredients));
-    formData.append("instructions", JSON.stringify(updatedRecipe.instructions));
-
-    if (updatedRecipe.imageFile) {
-      formData.append("photo", updatedRecipe.imageFile);
-    } else if (updatedRecipe.imageUrl) {
-      formData.append("imageUrl", updatedRecipe.imageUrl);
-    }
-
-    const response = await fetch(`${API_URL}/api/recipes/${id}`, {
-      method: "PUT",
-      headers: {
-        "auth-token": token,
-      },
-      body: formData,
-    });
-
-    if (!response.ok) {
-      const err = await response.text();
-      throw new Error(err || "Failed to update recipe");
-    }
-
-    return await response.json();
-  };
-
-  /**
-   * Update local recipe state
-   */
-  const updateRecipeInState = (id: string, updatedRecipe: Recipe): void => {
-    const index = recipes.value.findIndex((recipe) => recipe._id === id);
-
-    if (index !== -1) {
-      recipes.value[index] = {
-        ...updatedRecipe,
-        saved: recipes.value[index].saved,
-      };
-    }
-  };
-
-  /**
-   * Update recipe
-   */
-  const updateRecipe = async (
-    id: string,
-    recipeData: NewRecipe,
-  ): Promise<void> => {
+  const updateRecipe = async (id: string, recipeData: NewRecipe): Promise<void> => {
     try {
       error.value = null;
-
       validateRecipe(recipeData);
 
       const { token } = getTokenAndUserId();
-      const updatedRecipeResponse = await updateRecipeOnServer(
-        id,
-        recipeData,
-        token,
-      );
+      const response = await fetch(`${API_URL}/api/recipes/${id}`, {
+        method: "PUT",
+        headers: {
+          "auth-token": token,
+        },
+        body: buildRecipeFormData(recipeData),
+      });
 
-      updateRecipeInState(id, updatedRecipeResponse);
-      await fetchRecipes();
+      if (!response.ok) {
+        throw new Error((await response.text()) || "Failed to update recipe");
+      }
+
+      const updatedRecipe: Recipe = await response.json();
+      const existingIndex = recipes.value.findIndex((recipe) => recipe._id === id);
+
+      if (existingIndex !== -1) {
+        recipes.value[existingIndex] = {
+          ...updatedRecipe,
+          saved: recipes.value[existingIndex].saved,
+        };
+      }
     } catch (err) {
       error.value = (err as Error).message;
     }
   };
 
-  /**
-   * Delete recipe from server
-   */
-  const deleteRecipeFromServer = async (
-    id: string,
-    token: string,
-  ): Promise<void> => {
-    const response = await fetch(`${API_URL}/api/recipes/${id}`, {
+  const deleteRecipe = async (id: string): Promise<void> => {
+    try {
+      error.value = null;
+
+      const { token } = getTokenAndUserId();
+      const response = await fetch(`${API_URL}/api/recipes/${id}`, {
+        method: "DELETE",
+        headers: {
+          "auth-token": token,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error((await response.text()) || "Failed to delete recipe");
+      }
+
+      recipes.value = recipes.value.filter((recipe) => recipe._id !== id);
+    } catch (err) {
+      error.value = (err as Error).message;
+    }
+  };
+
+  const fetchComments = async (recipeId: string): Promise<RecipeComment[]> => {
+    const response = await fetch(`${API_URL}/api/recipes/${recipeId}/comments`);
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to fetch comments");
+    }
+
+    const payload = await response.json();
+    return payload.data ?? [];
+  };
+
+  const addComment = async (
+    recipeId: string,
+    text: string,
+  ): Promise<RecipeComment> => {
+    const { token } = getTokenAndUserId();
+    const response = await fetch(`${API_URL}/api/recipes/${recipeId}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token": token,
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to add comment");
+    }
+
+    const payload = await response.json();
+    return payload.data;
+  };
+
+  const deleteComment = async (recipeId: string, commentId: string): Promise<void> => {
+    const { token } = getTokenAndUserId();
+    const response = await fetch(`${API_URL}/api/recipes/${recipeId}/comments/${commentId}`, {
       method: "DELETE",
       headers: {
         "auth-token": token,
@@ -281,42 +302,72 @@ export const useRecipes = () => {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(errorText || "Failed to delete recipe");
+      throw new Error((await response.text()) || "Failed to delete comment");
     }
   };
 
-  /**
-   * Remove recipe from local state
-   */
-  const removeRecipeFromState = (id: string): void => {
-    recipes.value = recipes.value.filter((recipe) => recipe._id !== id);
+  const updateComment = async (
+    recipeId: string,
+    commentId: string,
+    text: string,
+  ): Promise<RecipeComment> => {
+    const { token } = getTokenAndUserId();
+    const response = await fetch(`${API_URL}/api/recipes/${recipeId}/comments/${commentId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token": token,
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to update comment");
+    }
+
+    const payload = await response.json();
+    return payload.data;
   };
 
-  /**
-   * Delete recipe
-   */
-  const deleteRecipe = async (id: string): Promise<void> => {
-    try {
-      error.value = null;
+  const rateRecipe = async (recipeId: string, value: number): Promise<Recipe["ratingSummary"]> => {
+    const { token } = getTokenAndUserId();
+    const response = await fetch(`${API_URL}/api/recipes/${recipeId}/rating`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "auth-token": token,
+      },
+      body: JSON.stringify({ value }),
+    });
 
-      const { token } = getTokenAndUserId();
-      await deleteRecipeFromServer(id, token);
-      removeRecipeFromState(id);
-    } catch (err) {
-      error.value = (err as Error).message;
+    if (!response.ok) {
+      throw new Error((await response.text()) || "Failed to rate recipe");
     }
+
+    const payload = await response.json();
+    const recipe = recipes.value.find((item) => item._id === recipeId);
+    if (recipe) {
+      recipe.ratingSummary = payload.data;
+    }
+
+    return payload.data;
   };
 
   return {
     recipes,
     loading,
     error,
-    deleteRecipe,
     fetchRecipes,
+    fetchRecipeById,
     toggleSave,
     addRecipe,
     updateRecipe,
+    deleteRecipe,
+    fetchComments,
+    addComment,
+    deleteComment,
+    updateComment,
+    rateRecipe,
     getTokenAndUserId,
   };
 };
