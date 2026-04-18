@@ -223,6 +223,7 @@ function goBack(): void {
   <div class="page">
     <HeroSection
       imageUrl="https://picsum.photos/seed/mealplanner/1400/700"
+      setting-key="meal-plan-editor-hero"
       :title="isEditing ? 'Edit Meal Plan' : 'Weekly Meal Planner'"
       subtitle="Pick a day, pick a meal, pick a recipe."
     />

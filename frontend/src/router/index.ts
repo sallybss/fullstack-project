@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import Home from "../pages/Home.vue";
 import About from "../pages/About.vue";
 import Contact from "../pages/Contact.vue";
+import PrivacyPolicy from "../pages/PrivacyPolicy.vue";
 import SavedRecipes from "../pages/SavedRecipes.vue";
 import MealPlans from "../pages/MealPlans.vue";
 import MealPlanEditor from "../pages/MealPlanEditor.vue";
@@ -22,6 +23,7 @@ const routes = [
   { path: "/", name: "home", component: Home },
   { path: "/about", name: "about", component: About },
   { path: "/contact", name: "contact", component: Contact },
+  { path: "/privacy-policy", name: "privacy-policy", component: PrivacyPolicy },
   { path: "/saved", name: "saved", component: SavedRecipes, meta: { requiresAuth: true } },
   { path: "/meal-plans", name: "meal-plans", component: MealPlans },
   { path: "/meal-plans/create", name: "meal-plans-create", component: MealPlanEditor },
@@ -38,7 +40,12 @@ const routes = [
 
   { path: "/my-profile", name: "my-profile", component: MyProfileView, alias: "/me", meta: { requiresAuth: true } },
   { path: "/my-profile/advanced", name: "my-profile-advanced", component: MyProfileAdvance, alias: "/me/advanced", meta: { requiresAuth: true } },
-  { path: "/me/admin", name: "admin-panel", component: AdminPanelView, meta: { requiresAuth: true } },
+  {
+    path: "/me/admin",
+    name: "admin-panel",
+    component: AdminPanelView,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 
   { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
 ];
@@ -57,9 +64,14 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const loggedIn = Boolean(localStorage.getItem("lsToken"));
+  const userRole = localStorage.getItem("userRole");
 
   if (to.meta.requiresAuth && !loggedIn) {
     return { name: "signin" };
+  }
+
+  if (to.meta.requiresAdmin && userRole !== "admin") {
+    return { name: "my-profile" };
   }
 
   return true;

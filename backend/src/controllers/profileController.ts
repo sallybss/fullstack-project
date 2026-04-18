@@ -77,7 +77,7 @@ async function ensureProfileForUser(userId: string, username?: string) {
         username: username || "User",
       },
     },
-    { new: true, upsert: true }
+    { upsert: true, returnDocument: "after" }
   );
 }
 
@@ -134,7 +134,7 @@ export async function updateMyProfile(req: Request, res: Response) {
     }
 
     const updatedProfile = await profileModel
-      .findByIdAndUpdate(profile._id, { $set: update }, { new: true })
+      .findByIdAndUpdate(profile._id, { $set: update }, { returnDocument: "after" })
       .select(profileSelect());
 
     res.status(200).json({ error: null, data: updatedProfile });
@@ -208,12 +208,12 @@ export async function followUserProfile(req: Request, res: Response) {
       profileModel.findOneAndUpdate(
         { user: authUser.id },
         { $addToSet: { following: targetUserId } },
-        { new: true }
+        { returnDocument: "after" }
       ),
       profileModel.findOneAndUpdate(
         { user: targetUserId },
         { $addToSet: { followers: authUser.id } },
-        { new: true }
+        { returnDocument: "after" }
       ),
     ]);
 
@@ -248,12 +248,12 @@ export async function unfollowUserProfile(req: Request, res: Response) {
       profileModel.findOneAndUpdate(
         { user: authUser.id },
         { $pull: { following: targetUserId } },
-        { new: true }
+        { returnDocument: "after" }
       ),
       profileModel.findOneAndUpdate(
         { user: targetUserId },
         { $pull: { followers: authUser.id } },
-        { new: true }
+        { returnDocument: "after" }
       ),
     ]);
 

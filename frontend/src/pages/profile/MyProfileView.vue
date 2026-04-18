@@ -43,6 +43,7 @@ const pagedSaved = computed(() => {
 const activeTotal = computed(() =>
   activeSection.value === "posts" ? myRecipes.value.length : savedRecipes.value.length,
 );
+const isAdmin = computed(() => user.value?.role === "admin");
 
 const memberSince = computed(() => {
   if (!user.value?.createdAt) return "Recently joined";
@@ -170,14 +171,14 @@ async function handleToggleSave(recipeId: string) {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/myprofilehero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/myprofilehero/1400/700" setting-key="my-profile-hero" />
 
     <main class="container">
       <div class="card">
         <div class="top">
           <ProfileTabsBar
             active-tab="profile"
-            :show-admin="true"
+            :show-admin="isAdmin"
             back-fallback-name="home"
           />
         </div>

@@ -2,6 +2,8 @@ import { Router, type Request, type Response } from "express";
 import recipeRoutes from "./routes/recipeRoutes";
 import authRoutes from "./routes/authRoutes";
 import profileRoutes from "./routes/profileRoutes";
+import contactRoutes from "./routes/contactRoutes";
+import siteSettingsRoutes from "./routes/siteSettingsRoutes";
 
 const router: Router = Router();
 
@@ -82,7 +84,7 @@ router.get("/", (_req: Request, res: Response) => {
  *   get:
  *     tags: [Auth]
  *     summary: Get all users
- *     description: Returns all users (requires login).
+ *     description: Returns all users (admin only).
  *     security:
  *       - ApiKeyAuth: []
  *     responses:
@@ -90,9 +92,216 @@ router.get("/", (_req: Request, res: Response) => {
  *         description: List of users
  *       401:
  *         description: Missing/invalid token
+ *       403:
+ *         description: Admin access required
+ *
+ * /auth/me:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Get current user
+ *     description: Returns the authenticated user's account details.
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Current user
+ *       401:
+ *         description: Missing/invalid token
+ *
+ *   delete:
+ *     tags: [Auth]
+ *     summary: Delete my account
+ *     description: Deletes the authenticated user account and related content.
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: Account deleted
+ *       401:
+ *         description: Missing/invalid token
+ *
+ * /auth/me/password:
+ *   put:
+ *     tags: [Auth]
+ *     summary: Change my password
+ *     description: Updates the authenticated user's password.
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [currentPassword, newPassword]
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password updated
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Missing/invalid token
+ *
+ * /auth/users/{userId}/status:
+ *   patch:
+ *     tags: [Auth]
+ *     summary: Update user status
+ *     description: Block or unblock a user account (admin only).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User id
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [status]
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [active, blocked]
+ *     responses:
+ *       200:
+ *         description: User status updated
+ *       400:
+ *         description: Invalid status
+ *       401:
+ *         description: Missing/invalid token
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: User not found
+ *
+ * /auth/users/{userId}:
+ *   delete:
+ *     tags: [Auth]
+ *     summary: Delete a user
+ *     description: Deletes a user account and their related content (admin only).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User id
+ *     responses:
+ *       200:
+ *         description: User deleted
+ *       400:
+ *         description: Invalid request
+ *       401:
+ *         description: Missing/invalid token
+ *       403:
+ *         description: Admin access required
+ *       404:
+ *         description: User not found
  */
 router.use("/auth", authRoutes);
 router.use("/profiles", profileRoutes);
+router.use("/settings", siteSettingsRoutes);
+
+/**
+ * @swagger
+ * /contact:
+ *   post:
+ *     tags: [Contact]
+ *     summary: Send a contact form message
+ *     description: Sends a contact message to the configured FoodFinder Gmail inbox.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, subject, message]
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 example: "Jane Doe"
+ *               email:
+ *                 type: string
+ *                 example: "jane@example.com"
+ *               subject:
+ *                 type: string
+ *                 example: "Recipe question"
+ *               message:
+ *                 type: string
+ *                 example: "Hi, I would like help with posting my recipe."
+ *     responses:
+ *       200:
+ *         description: Contact message sent
+ *       400:
+ *         description: Validation error
+ *       500:
+ *         description: Email transport not configured or send failure
+ */
+router.use("/contact", contactRoutes);
+
+/**
+ * @swagger
+ * /settings/hero/{key}:
+ *   get:
+ *     tags: [Settings]
+ *     summary: Get a hero cover setting
+ *     description: Returns the configured image URL for a named hero cover key.
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Hero setting loaded
+ *       400:
+ *         description: Missing key
+ *   put:
+ *     tags: [Settings]
+ *     summary: Update a hero cover setting
+ *     description: Updates the image URL for a named hero cover key (admin only).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [imageUrl]
+ *             properties:
+ *               imageUrl:
+ *                 type: string
+ *                 example: "https://images.example.com/hero.jpg"
+ *     responses:
+ *       200:
+ *         description: Hero setting updated
+ *       400:
+ *         description: Invalid input
+ *       401:
+ *         description: Missing/invalid token
+ *       403:
+ *         description: Admin access required
+ */
 
 /**
  * RECIPES

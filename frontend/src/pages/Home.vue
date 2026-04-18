@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <main class="page__main">
-      <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700">
+      <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" setting-key="home-hero">
         <HeroSearch v-model="query" />
       </HeroSection>
 

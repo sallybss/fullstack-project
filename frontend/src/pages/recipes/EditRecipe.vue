@@ -70,7 +70,7 @@ const handleUpdateRecipe = async (payload: RecipeFormValues) => {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" setting-key="edit-recipe-hero" />
 
     <main class="container">
       <p v-if="pageLoading" class="info">Loading recipe...</p>

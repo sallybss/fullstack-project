@@ -1,7 +1,7 @@
 <template>
   <div class="page">
     <main class="page__main">
-      <HeroSection imageUrl="https://picsum.photos/seed/savedhero/1400/700">
+      <HeroSection imageUrl="https://picsum.photos/seed/savedhero/1400/700" setting-key="saved-recipes-hero">
         <div class="saved-hero">
           <h1 class="saved-hero__title">Saved Recipes</h1>
         </div>

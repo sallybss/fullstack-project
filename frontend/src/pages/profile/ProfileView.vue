@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/profilehero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/profilehero/1400/700" setting-key="profile-hero" />
 
     <main class="container">
       <div class="profile-card">
@@ -99,8 +99,10 @@
                 v-for="r in activeSection === 'posts' ? pagedRecipes : pagedSavedRecipes"
                 :key="r._id"
                 :recipe="r"
+                :show-delete="canAdminDeleteRecipes"
                 @auth-required="goToSignIn"
                 @save-click="handleToggleSave"
+                @delete="handleAdminDeleteRecipe"
               />
             </div>
 
@@ -168,8 +170,8 @@ const route = useRoute();
 const router = useRouter();
 const API_URL = import.meta.env.VITE_API_URL;
 
-const { recipes, fetchRecipes, toggleSave } = useRecipes();
-const { isLoggedIn, profile, fetchCurrentUser } = useUser();
+const { recipes, fetchRecipes, toggleSave, deleteRecipe } = useRecipes();
+const { isLoggedIn, profile, user, fetchCurrentUser } = useUser();
 
 const loadingProfile = ref(true);
 const pageError = ref("");
@@ -216,6 +218,15 @@ const canFollow = computed(() => {
 const isFollowing = computed(() => {
   if (!profile.value || !profileData.value) return false;
   return profile.value.following.includes(profileData.value.user);
+});
+
+const canAdminDeleteRecipes = computed(() => {
+  return Boolean(
+    user.value?.role === "admin" &&
+      profileData.value &&
+      user.value._id !== profileData.value.user &&
+      activeSection.value === "posts",
+  );
 });
 
 onMounted(async () => {
@@ -336,6 +347,19 @@ async function handleToggleSave(recipeId: string) {
       recipe._id === recipeId ? { ...recipe, saved: !recipe.saved } : recipe,
     )
     .filter((recipe) => recipe.saved);
+}
+
+async function handleAdminDeleteRecipe(recipeId: string) {
+  if (!canAdminDeleteRecipes.value) return;
+  if (!window.confirm("Delete this recipe as admin?")) return;
+
+  await deleteRecipe(recipeId);
+  userRecipes.value = userRecipes.value.filter((recipe) => recipe._id !== recipeId);
+
+  const totalPages = Math.max(1, Math.ceil(userRecipes.value.length / pageSize));
+  if (page.value > totalPages) {
+    page.value = totalPages;
+  }
 }
 </script>
 

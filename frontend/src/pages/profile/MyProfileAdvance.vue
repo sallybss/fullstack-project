@@ -29,6 +29,7 @@ const confirmPassword = ref("");
 const profileMessage = ref("");
 const passwordMessage = ref("");
 const passwordError = ref("");
+const isAdmin = computed(() => user.value?.role === "admin");
 
 const initials = computed(() => {
   const username = user.value?.username || "User";
@@ -112,14 +113,14 @@ async function removeAccount() {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/myprofilehero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/myprofilehero/1400/700" setting-key="my-profile-advanced-hero" />
 
     <main class="container">
       <div class="card">
         <div class="top">
           <ProfileTabsBar
             active-tab="advanced"
-            :show-admin="true"
+            :show-admin="isAdmin"
             back-fallback-name="my-profile"
           />
         </div>

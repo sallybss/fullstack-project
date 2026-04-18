@@ -42,6 +42,7 @@ const filteredUsers = computed(() => {
 const totalUsers = computed(() => users.value.length);
 const activeUsers = computed(() => users.value.filter((entry) => entry.status === "active").length);
 const blockedUsers = computed(() => users.value.filter((entry) => entry.status === "blocked").length);
+const isAdmin = computed(() => user.value?.role === "admin");
 
 const pagedUsers = computed(() => {
   const start = (page.value - 1) * pageSize;
@@ -75,6 +76,12 @@ onMounted(async () => {
     error.value = "";
 
     await Promise.all([fetchCurrentUser(), fetchRecipes()]);
+
+    if (user.value?.role !== "admin") {
+      router.replace({ name: "my-profile" });
+      return;
+    }
+
     users.value = await fetchUsers();
   } catch (err) {
     error.value = (err as Error).message || "Failed to load admin data";
@@ -87,9 +94,14 @@ async function toggleBlock(id: string) {
   const entry = users.value.find((item) => item._id === id);
   if (!entry) return;
 
-  const nextStatus = entry.status === "blocked" ? "active" : "blocked";
-  const updated = await updateManagedUserStatus(id, nextStatus);
-  users.value = users.value.map((item) => (item._id === id ? updated : item));
+  try {
+    error.value = "";
+    const nextStatus = entry.status === "blocked" ? "active" : "blocked";
+    const updated = await updateManagedUserStatus(id, nextStatus);
+    users.value = users.value.map((item) => (item._id === id ? updated : item));
+  } catch (err) {
+    error.value = (err as Error).message || "Failed to update user status";
+  }
 }
 
 async function deleteUser(id: string) {
@@ -106,14 +118,14 @@ function viewPosts(id: string) {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/adminhero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/adminhero/1400/700" setting-key="admin-panel-hero" />
 
     <main class="container">
       <div class="card">
         <div class="top">
           <ProfileTabsBar
             active-tab="admin"
-            :show-admin="true"
+            :show-admin="isAdmin"
             back-fallback-name="my-profile"
           />
 

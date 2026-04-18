@@ -150,6 +150,7 @@ async function handleDeleteMealPlan(mealPlan: MealPlan): Promise<void> {
   <div class="page">
     <HeroSection
       imageUrl="https://picsum.photos/seed/mealplanner-overview/1400/700"
+      setting-key="meal-plans-hero"
       title="Meal Planner"
       subtitle="Open a saved plan, review planned days, and jump back in to edit."
     />

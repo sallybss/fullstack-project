@@ -57,7 +57,7 @@ export async function registerUser(req: Request, res: Response) {
           avatarUrl: "",
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     );
 
     return res.status(201).json({ error: null, data: { userId: savedUser._id } });
@@ -246,7 +246,7 @@ export async function updateUserStatus(req: Request, res: Response) {
     const user = await userModel.findByIdAndUpdate(
       userId,
       { $set: { status } },
-      { new: true }
+      { returnDocument: "after" }
     ).select("_id username email bio avatarUrl role status favorites createdAt updatedAt");
 
     if (!user) {

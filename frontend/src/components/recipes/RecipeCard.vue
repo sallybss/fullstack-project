@@ -64,6 +64,16 @@
             :class="recipe.saved ? 'pi-bookmark-fill' : 'pi-bookmark'"
           ></i>
         </button>
+
+        <button
+          v-if="showDelete"
+          class="deleteBtn"
+          type="button"
+          aria-label="Delete"
+          @click="emit('delete', recipe._id)"
+        >
+          <i class="pi pi-trash"></i>
+        </button>
       </template>
     </div>
   </article>
@@ -85,12 +95,14 @@ const props = defineProps<{
   plannerAdded?: boolean;
   plannerDisabled?: boolean;
   plannerLabel?: string;
+  showDelete?: boolean;
 }>();
 
 const emit = defineEmits<{
   (e: "auth-required"): void;
   (e: "save-click", recipeId: string): void;
   (e: "planner-add", recipeId: string): void;
+  (e: "delete", recipeId: string): void;
 }>();
 
 const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
@@ -261,7 +273,22 @@ function handleImageError(event: Event) {
 
 .saveBtn:hover {
   border-color: #ff734c;
-;
+}
+
+.deleteBtn {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  background: #fff;
+  color: #ff724c;
+  border: 1px solid rgba(255, 114, 76, 0.35);
+  cursor: pointer;
+}
+
+.deleteBtn:hover {
+  border-color: rgba(255, 114, 76, 0.65);
 }
 
 .plannerBtn {

@@ -2,6 +2,11 @@
   <div class="contact-page">
     <section class="contact-hero" :style="heroBackgroundStyle">
       <div class="contact-hero__overlay"></div>
+      <AdminCoverEditor
+        setting-key="contact-hero"
+        :initial-image-url="heroImageUrl"
+        @updated="heroImageUrl = $event"
+      />
       <div class="contact-hero__content">
         <p class="contact-hero__eyebrow">Ask us</p>
         <h1>Ask Us</h1>
@@ -19,7 +24,7 @@
             <i class="pi pi-envelope"></i>
           </div>
           <h2>Email us</h2>
-          <p>hello@foodfinder.com</p>
+          <p>foodfindersupport@gmail.com</p>
         </article>
 
         <article class="contact-card">
@@ -71,17 +76,26 @@
             <textarea
               v-model="form.message"
               rows="6"
+              :maxlength="MAX_MESSAGE_LENGTH"
               placeholder="Your message"
               required
             ></textarea>
 
-            <p v-if="submitted" class="contact-form__success">
-              Your message is ready to send.
+            <p class="contact-form__counter">
+              ({{ form.message.length }}/{{ MAX_MESSAGE_LENGTH }})
             </p>
 
-            <button class="contact-form__button" type="submit">
+            <p v-if="submitSuccess" class="contact-form__success">
+              Your message has been sent successfully.
+            </p>
+
+            <p v-if="submitError" class="contact-form__error">
+              {{ submitError }}
+            </p>
+
+            <button class="contact-form__button" type="submit" :disabled="isSubmitting">
               <i class="pi pi-send"></i>
-              Send Message
+              {{ isSubmitting ? "Sending..." : "Send Message" }}
             </button>
           </form>
         </section>
@@ -129,12 +143,17 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
+import AdminCoverEditor from "../components/common/AdminCoverEditor.vue";
 import heroImage from "../assets/images/hero.jpg";
 
-const heroBackgroundStyle = {
-  backgroundImage: `linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%), url(${heroImage})`,
-};
+const MAX_MESSAGE_LENGTH = 1000;
+
+const heroImageUrl = ref(heroImage);
+
+const heroBackgroundStyle = computed(() => ({
+  backgroundImage: `linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%), url(${heroImageUrl.value})`,
+}));
 
 const form = reactive({
   name: "",
@@ -143,10 +162,41 @@ const form = reactive({
   message: "",
 });
 
-const submitted = ref(false);
+const API_URL = import.meta.env.VITE_API_URL;
+const isSubmitting = ref(false);
+const submitSuccess = ref(false);
+const submitError = ref("");
 
-function handleSubmit() {
-  submitted.value = true;
+async function handleSubmit() {
+  try {
+    isSubmitting.value = true;
+    submitSuccess.value = false;
+    submitError.value = "";
+
+    const response = await fetch(`${API_URL}/api/contact`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(form),
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(payload?.error || "Failed to send message.");
+    }
+
+    submitSuccess.value = true;
+    form.name = "";
+    form.email = "";
+    form.subject = "";
+    form.message = "";
+  } catch (error) {
+    submitError.value = (error as Error).message || "Failed to send message.";
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 </script>
 
@@ -325,6 +375,18 @@ function handleSubmit() {
   color: #7f6d60;
 }
 
+.contact-form__counter {
+  margin: -4px 2px 0;
+  color: #9d9288;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.contact-form__error {
+  margin: 0;
+  color: #c2543f;
+}
+
 .contact-form__button {
   display: inline-flex;
   align-items: center;
@@ -341,6 +403,11 @@ function handleSubmit() {
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(164, 92, 57, 0.16);
+}
+
+.contact-form__button:disabled {
+  cursor: wait;
+  opacity: 0.84;
 }
 
 .faq-panel {

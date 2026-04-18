@@ -413,7 +413,7 @@ export async function updateRecipeById(req: Request, res: Response) {
     }
 
     const result = await recipeModel
-      .findByIdAndUpdate(id, update, { new: true })
+      .findByIdAndUpdate(id, update, { returnDocument: "after" })
       .populate("owner", "username bio avatarUrl");
 
     if (!result) res.status(404).send("Cannot update recipe with id=" + id);
@@ -446,7 +446,12 @@ export async function deleteRecipeById(req: Request, res: Response) {
       res.status(404).send("Cannot delete recipe with id=" + id);
       return;
     }
-    if (String(existingRecipe.owner) !== authUserId) {
+
+    const authUser = await userModel.findById(authUserId).select("role");
+    const canDeleteRecipe =
+      String(existingRecipe.owner) === authUserId || authUser?.role === "admin";
+
+    if (!canDeleteRecipe) {
       res.status(403).json({ error: "You can only delete your own recipes" });
       return;
     }
@@ -532,7 +537,7 @@ export async function addFavoriteRecipe(req: Request, res: Response) {
     }
 
     const updated = await userModel
-      .findByIdAndUpdate(userId, { $addToSet: { favorites: recipeId } }, { new: true })
+      .findByIdAndUpdate(userId, { $addToSet: { favorites: recipeId } }, { returnDocument: "after" })
       .select("favorites");
 
     if (!updated) {
@@ -563,7 +568,7 @@ export async function removeFavoriteRecipe(req: Request, res: Response) {
     const recipeId = req.params.id;
 
     const updated = await userModel
-      .findByIdAndUpdate(userId, { $pull: { favorites: recipeId } }, { new: true })
+      .findByIdAndUpdate(userId, { $pull: { favorites: recipeId } }, { returnDocument: "after" })
       .select("favorites");
 
     if (!updated) {

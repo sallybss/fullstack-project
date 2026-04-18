@@ -9,13 +9,13 @@
         </div>
 
         <div class="footer__social" aria-label="Social links">
-          <a class="footer__iconBtn" href="#" aria-label="Email">
+          <a class="footer__iconBtn" href="mailto:foodfindersupport@gmail.com" aria-label="Email">
             <i class="pi pi-envelope"></i>
           </a>
-          <a class="footer__iconBtn" href="#" aria-label="Facebook">
+          <a class="footer__iconBtn" href="https://facebook.com" aria-label="Facebook" target="_blank" rel="noreferrer">
             <i class="pi pi-facebook"></i>
           </a>
-          <a class="footer__iconBtn" href="#" aria-label="Instagram">
+          <a class="footer__iconBtn" href="https://instagram.com" aria-label="Instagram" target="_blank" rel="noreferrer">
             <i class="pi pi-instagram"></i>
           </a>
         </div>
@@ -28,7 +28,7 @@
         <small class="footer__copy">© 2026 FoodFinder</small>
 
         <nav class="footer__links" aria-label="Footer links">
-          <a class="footer__link" href="#">Privacy Policy</a>
+          <RouterLink class="footer__link" to="/privacy-policy">Privacy Policy</RouterLink>
         </nav>
       </div>
     </div>
