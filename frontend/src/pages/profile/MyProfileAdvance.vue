@@ -4,6 +4,7 @@ import { useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
+import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
 import { useUser } from "../../modules/auth/useUser";
 
 const router = useRouter();
@@ -25,10 +26,10 @@ const avatarUrl = ref("");
 const currentPassword = ref("");
 const newPassword = ref("");
 const confirmPassword = ref("");
-const localMessage = ref("");
+const profileMessage = ref("");
+const passwordMessage = ref("");
 const passwordError = ref("");
 
-const isAdmin = computed(() => user.value?.role === "admin");
 const initials = computed(() => {
   const username = user.value?.username || "User";
   return username
@@ -51,10 +52,6 @@ function resetFields() {
   avatarUrl.value = profile.value?.avatarUrl || user.value?.avatarUrl || "";
 }
 
-function goBack() {
-  router.back();
-}
-
 async function savePersonalInfo() {
   const updated = await updateProfile({
     username: fullName.value,
@@ -63,16 +60,18 @@ async function savePersonalInfo() {
     avatarUrl: avatarUrl.value,
   });
 
-  localMessage.value = updated ? "Profile updated." : "";
+  profileMessage.value = updated ? "Profile updated." : "";
+  passwordMessage.value = "";
 }
 
 function cancelPersonalInfo() {
-  localMessage.value = "";
+  profileMessage.value = "";
   resetFields();
 }
 
 async function submitPasswordUpdate() {
   passwordError.value = "";
+  passwordMessage.value = "";
 
   if (!currentPassword.value || !newPassword.value || !confirmPassword.value) {
     passwordError.value = "Please fill all password fields.";
@@ -90,11 +89,12 @@ async function submitPasswordUpdate() {
   currentPassword.value = "";
   newPassword.value = "";
   confirmPassword.value = "";
-  localMessage.value = "Password updated.";
+  passwordMessage.value = "Password updated.";
 }
 
 function cancelPassword() {
   passwordError.value = "";
+  passwordMessage.value = "";
   currentPassword.value = "";
   newPassword.value = "";
   confirmPassword.value = "";
@@ -117,30 +117,11 @@ async function removeAccount() {
     <main class="container">
       <div class="card">
         <div class="top">
-          <div class="topLeft">
-            <button class="back" type="button" @click="goBack">← Go back</button>
-
-            <div class="tabs">
-              <button
-                class="tab"
-                type="button"
-                @click="router.push({ name: 'my-profile' })"
-              >
-                Profile
-              </button>
-
-              <button class="tab is-active" type="button">Advanced</button>
-
-              <button
-                v-if="isAdmin"
-                class="tab"
-                type="button"
-                @click="router.push({ name: 'admin-panel' })"
-              >
-                Admin Panel
-              </button>
-            </div>
-          </div>
+          <ProfileTabsBar
+            active-tab="advanced"
+            :show-admin="true"
+            back-fallback-name="my-profile"
+          />
         </div>
 
         <div class="header">
@@ -154,7 +135,7 @@ async function removeAccount() {
           </div>
         </div>
 
-        <section class="sectionCard">
+        <section class="sectionCard sectionCard--plain">
           <div class="sectionHead">
             <div>
               <h2 class="sectionTitle">Personal Information</h2>
@@ -184,7 +165,7 @@ async function removeAccount() {
             </div>
           </div>
 
-          <p v-if="localMessage" class="success">{{ localMessage }}</p>
+          <p v-if="profileMessage" class="success">{{ profileMessage }}</p>
           <p v-if="error" class="error">{{ error }}</p>
 
           <div class="actions">
@@ -222,6 +203,7 @@ async function removeAccount() {
             <input v-model="confirmPassword" type="password" />
           </div>
 
+          <p v-if="passwordMessage" class="success">{{ passwordMessage }}</p>
           <p v-if="passwordError" class="error">{{ passwordError }}</p>
         </div>
 
@@ -255,15 +237,14 @@ async function removeAccount() {
 
 <style scoped>
 .page {
+  background: #f6f6fb;
   min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(255, 114, 76, 0.14), transparent 28%),
-    linear-gradient(180deg, #f7f5f1 0%, #f4f0ea 100%);
 }
 
 .container {
-  width: min(1100px, 92vw);
-  margin: -180px auto 64px;
+  max-width: 1180px;
+  margin: -180px auto 60px;
+  padding: 0 16px;
   position: relative;
   z-index: 2;
   display: grid;
@@ -271,128 +252,76 @@ async function removeAccount() {
 }
 
 .card {
-  background: rgba(255, 255, 255, 0.94);
-  border: 1px solid rgba(168, 143, 112, 0.14);
-  border-radius: 30px;
-  box-shadow: 0 22px 60px rgba(68, 43, 24, 0.09);
-  backdrop-filter: blur(12px);
+  background: #fff;
+  border-radius: 28px;
+  padding: 22px;
 }
 
-.card:first-child {
-  padding: 24px;
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .sectionCardOuter {
   padding: 24px;
 }
 
-.top {
+.header {
+  margin-top: 18px;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-}
-
-.topLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.back {
-  align-self: flex-start;
-  border: 0;
-  background: transparent;
-  color: #6c6257;
-  padding: 0;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.tabs {
-  display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-}
-
-.tab {
-  border: 1px solid rgba(255, 114, 76, 0.22);
-  background: rgba(255, 255, 255, 0.78);
-  color: #6b5443;
-  border-radius: 999px;
-  padding: 10px 16px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.tab:hover {
-  border-color: rgba(255, 114, 76, 0.45);
-  color: #2f241b;
-}
-
-.tab.is-active {
-  background: linear-gradient(135deg, #ff8c63, #ff724c);
-  border-color: transparent;
-  color: white;
-  box-shadow: 0 10px 24px rgba(255, 114, 76, 0.24);
-}
-
-.header {
-  margin-top: 22px;
-  padding: 24px 0 0;
-  border-top: 1px solid rgba(107, 84, 67, 0.1);
+  gap: 18px;
+  align-items: center;
 }
 
 .left {
   display: flex;
+  gap: 14px;
   align-items: center;
-  gap: 16px;
 }
 
 .avatar {
-  width: 68px;
-  height: 68px;
-  border-radius: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
   display: grid;
   place-items: center;
-  background:
-    linear-gradient(135deg, rgba(255, 114, 76, 0.18), rgba(255, 196, 146, 0.56));
-  color: #7b341e;
+  background: #f1f1f6;
+  color: #333;
   font-size: 22px;
   font-weight: 800;
-  letter-spacing: 0.08em;
 }
 
 .meta {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .name {
   margin: 0;
-  font-size: clamp(2rem, 3vw, 2.75rem);
-  line-height: 1;
-  letter-spacing: -0.04em;
-  color: #1f1a16;
+  font-size: 24px;
+  font-weight: 800;
 }
 
 .sub {
   margin: 0;
-  color: #74675c;
-  font-size: 15px;
+  color: #888;
+  font-size: 13px;
   line-height: 1.5;
-  max-width: 540px;
 }
 
 .sectionCard {
   margin-top: 28px;
-  padding: 28px;
-  border-radius: 24px;
-  background:
-    linear-gradient(180deg, rgba(255, 249, 244, 0.96), rgba(255, 255, 255, 0.92));
-  border: 1px solid rgba(168, 143, 112, 0.14);
+}
+
+.sectionCard--plain {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
 }
 
 .sectionHead {
@@ -444,9 +373,9 @@ label {
 input,
 textarea {
   width: 100%;
-  border: 1px solid rgba(144, 118, 88, 0.18);
-  background: rgba(255, 255, 255, 0.94);
-  border-radius: 16px;
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 14px;
   padding: 14px 16px;
   color: #241d18;
   font: inherit;
@@ -512,6 +441,11 @@ textarea {
     margin-top: -150px;
   }
 
+  .header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
   .formGrid {
     grid-template-columns: 1fr;
   }
@@ -529,14 +463,17 @@ textarea {
 
 @media (max-width: 640px) {
   .container {
-    width: min(94vw, 1100px);
+    width: min(94vw, 1180px);
     margin-top: -120px;
   }
 
-  .card:first-child,
-  .sectionCardOuter,
-  .sectionCard {
+  .card,
+  .sectionCardOuter {
     padding: 18px;
+  }
+
+  .sectionCard--plain {
+    padding: 0;
   }
 
   .left {
@@ -546,7 +483,6 @@ textarea {
   .avatar {
     width: 56px;
     height: 56px;
-    border-radius: 18px;
     font-size: 18px;
   }
 
