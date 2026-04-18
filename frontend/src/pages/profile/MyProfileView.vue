@@ -7,6 +7,7 @@ import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
 import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
 import AdvancedRecipeCard from "../../components/recipes/AdvancedRecipeCard.vue";
+import { usePagination } from "../../composables/usePagination";
 
 import { useRecipes } from "../../modules/useRecipes";
 import { useUser } from "../../modules/auth/useUser";
@@ -18,7 +19,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 const { error, toggleSave, deleteRecipe } = useRecipes();
 const { user, profile, fetchCurrentUser } = useUser();
 
-const page = ref(1);
 const pageSize = 8;
 const loadingRecipes = ref(true);
 const myRecipes = ref<Recipe[]>([]);
@@ -28,20 +28,35 @@ const following = ref<Array<{ _id: string; username: string }>>([]);
 const activeSection = ref<"posts" | "saved">("posts");
 const peopleModal = ref<"followers" | "following" | null>(null);
 
-const totalPages = computed(() => Math.max(1, Math.ceil(myRecipes.value.length / pageSize)));
+const {
+  page: postsPage,
+  totalItems: totalPosts,
+  pagedItems: pagedPosts,
+  syncPageWithinBounds: syncPostsPageWithinBounds,
+} = usePagination(myRecipes, pageSize);
+const {
+  page: savedPage,
+  totalItems: totalSavedRecipes,
+  pagedItems: pagedSavedRecipes,
+} = usePagination(savedRecipes, pageSize);
+const activePage = computed({
+  get: () =>
+    activeSection.value === "posts"
+      ? postsPage.value
+      : savedPage.value,
+  set: (value: number) => {
+    if (activeSection.value === "posts") {
+      postsPage.value = value;
+      return;
+    }
 
-const paged = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return myRecipes.value.slice(start, start + pageSize);
+    savedPage.value = value;
+  },
 });
-
-const pagedSaved = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return savedRecipes.value.slice(start, start + pageSize);
-});
-
 const activeTotal = computed(() =>
-  activeSection.value === "posts" ? myRecipes.value.length : savedRecipes.value.length,
+  activeSection.value === "posts"
+    ? totalPosts.value
+    : totalSavedRecipes.value,
 );
 const isAdmin = computed(() => user.value?.role === "admin");
 
@@ -77,10 +92,7 @@ async function handleDeleteRecipe(id: string) {
 
   await deleteRecipe(id);
   myRecipes.value = myRecipes.value.filter((recipe) => recipe._id !== id);
-
-  if (page.value > totalPages.value) {
-    page.value = totalPages.value;
-  }
+  syncPostsPageWithinBounds();
 }
 
 function goToEditProfile() {
@@ -248,17 +260,23 @@ async function handleToggleSave(recipeId: string) {
         <p v-if="loadingRecipes">Loading recipes...</p>
         <p v-if="error">{{ error }}</p>
 
-        <div v-if="activeSection === 'posts' && !loadingRecipes && paged.length === 0" class="list-empty">
+        <div
+          v-if="activeSection === 'posts' && !loadingRecipes && pagedPosts.length === 0"
+          class="list-empty"
+        >
           No recipes posted yet.
         </div>
 
-        <div v-else-if="activeSection === 'saved' && !loadingRecipes && pagedSaved.length === 0" class="list-empty">
+        <div
+          v-else-if="activeSection === 'saved' && !loadingRecipes && pagedSavedRecipes.length === 0"
+          class="list-empty"
+        >
           No saved recipes yet.
         </div>
 
         <section v-else class="grid">
           <AdvancedRecipeCard
-            v-for="r in activeSection === 'posts' ? paged : pagedSaved"
+            v-for="r in activeSection === 'posts' ? pagedPosts : pagedSavedRecipes"
             :key="r._id"
             :recipe="r"
             @toggle-save="handleToggleSave"
@@ -269,7 +287,7 @@ async function handleToggleSave(recipeId: string) {
 
         <div class="pager" v-if="activeTotal > pageSize">
           <PaginationBar
-            v-model:page="page"
+            v-model:page="activePage"
             :pageSize="pageSize"
             :total="activeTotal"
           />

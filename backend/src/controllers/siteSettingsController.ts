@@ -8,6 +8,7 @@ const updateHeroSchema = Joi.object({
   imageUrl: Joi.string().trim().uri({ scheme: ["http", "https"] }).max(2000).required(),
 });
 
+
 function getSettingKey(req: Request) {
   return String(req.params.key || "").trim();
 }
@@ -31,6 +32,39 @@ export async function getHeroSetting(req: Request, res: Response) {
     });
   } catch {
     return res.status(500).json({ error: "Failed to load hero setting." });
+  }
+}
+
+export async function uploadHeroCover(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const key = getSettingKey(req);
+    if (!key) {
+      return res.status(400).json({ error: "Missing setting key" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: "No image file provided" });
+    }
+
+    const imageUrl = `/uploads/covers/${req.file.filename}`;
+
+    const setting = await siteSettingModel.findOneAndUpdate(
+      { key },
+      { $set: { value: imageUrl } },
+      { upsert: true, returnDocument: "after" }
+    ).select("key value");
+
+    return res.status(200).json({
+      error: null,
+      data: {
+        key: setting?.key || key,
+        imageUrl: setting?.value || imageUrl,
+      },
+    });
+  } catch {
+    return res.status(500).json({ error: "Failed to upload cover image." });
   }
 }
 

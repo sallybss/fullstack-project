@@ -18,6 +18,7 @@ import MyProfileAdvance from "../pages/profile/MyProfileAdvance.vue";
 import ProfileView from "../pages/profile/ProfileView.vue";
 
 import AdminPanelView from "../pages/admin/AdminPanelView.vue";
+import { useAuthSession } from "../composables/useAuthSession";
 
 const routes = [
   { path: "/", name: "home", component: Home },
@@ -63,14 +64,14 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
-  const loggedIn = Boolean(localStorage.getItem("lsToken"));
-  const userRole = localStorage.getItem("userRole");
+  const { isAuthenticated, userRole, syncAuthSessionFromStorage } = useAuthSession();
+  syncAuthSessionFromStorage();
 
-  if (to.meta.requiresAuth && !loggedIn) {
+  if (to.meta.requiresAuth && !isAuthenticated.value) {
     return { name: "signin" };
   }
 
-  if (to.meta.requiresAdmin && userRole !== "admin") {
+  if (to.meta.requiresAdmin && userRole.value !== "admin") {
     return { name: "my-profile" };
   }
 

@@ -1,10 +1,11 @@
 import { ref } from "vue";
 import type { Profile, User, UserStatus } from "../../interfaces/user";
+import { useAuthSession } from "../../composables/useAuthSession";
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const token = ref<string | null>(localStorage.getItem("lsToken"));
-const isLoggedIn = ref<boolean>(Boolean(localStorage.getItem("lsToken")));
+const { token, isAuthenticated, setAuthSession, setStoredUserRole, clearAuthSession } = useAuthSession();
+const isLoggedIn = isAuthenticated;
 const error = ref<string | null>(null);
 const user = ref<User | null>(null);
 const profile = ref<Profile | null>(null);
@@ -64,14 +65,13 @@ export const useUser = () => {
 
       const userPayload = await userResponse.json();
       user.value = userPayload.data;
-      localStorage.setItem("userRole", userPayload.data.role);
+      setStoredUserRole(userPayload.data.role);
 
       if (profileResponse.ok) {
         const profilePayload = await profileResponse.json();
         profile.value = profilePayload.data;
       }
 
-      isLoggedIn.value = true;
       initialized.value = true;
       return user.value;
     } catch (err) {
@@ -105,16 +105,12 @@ export const useUser = () => {
 
       const authResponse = await response.json();
 
-      token.value = authResponse.data.token;
-      isLoggedIn.value = true;
-
-      localStorage.setItem("lsToken", authResponse.data.token);
+      setAuthSession(authResponse.data.token);
       localStorage.setItem("userIDToken", authResponse.data.userId);
 
       await fetchCurrentUser();
     } catch (err) {
       error.value = (err as Error).message || "An error occurred";
-      isLoggedIn.value = false;
     }
   };
 
@@ -143,14 +139,10 @@ export const useUser = () => {
   };
 
   const logout = (): void => {
-    token.value = null;
     user.value = null;
     profile.value = null;
-    isLoggedIn.value = false;
-
-    localStorage.removeItem("lsToken");
+    clearAuthSession();
     localStorage.removeItem("userIDToken");
-    localStorage.removeItem("userRole");
   };
 
   const resetForm = (): void => {

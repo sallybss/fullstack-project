@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
+import { usePagination } from "../../composables/usePagination";
 
 import { useUser } from "../../modules/auth/useUser";
 import { useRecipes } from "../../modules/useRecipes";
@@ -22,7 +23,6 @@ const {
 const { recipes, fetchRecipes } = useRecipes();
 
 const search = ref("");
-const page = ref(1);
 const pageSize = 5;
 const loading = ref(true);
 const error = ref("");
@@ -43,11 +43,7 @@ const totalUsers = computed(() => users.value.length);
 const activeUsers = computed(() => users.value.filter((entry) => entry.status === "active").length);
 const blockedUsers = computed(() => users.value.filter((entry) => entry.status === "blocked").length);
 const isAdmin = computed(() => user.value?.role === "admin");
-
-const pagedUsers = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return filteredUsers.value.slice(start, start + pageSize);
-});
+const { page, totalItems: filteredUserCount, pagedItems: pagedUsers, resetPage } = usePagination(filteredUsers, pageSize);
 
 function recipeCountForUser(userId: string) {
   return recipes.value.filter((recipe) => recipe.owner?._id === userId).length;
@@ -69,6 +65,10 @@ function initialsForUser(entry: User) {
     .slice(0, 2)
     .toUpperCase();
 }
+
+watch(search, () => {
+  resetPage();
+});
 
 onMounted(async () => {
   try {
@@ -245,11 +245,11 @@ function viewPosts(id: string) {
             </tbody>
           </table>
 
-          <div class="pager" v-if="filteredUsers.length > pageSize">
+          <div class="pager" v-if="filteredUserCount > pageSize">
             <PaginationBar
               v-model:page="page"
               :pageSize="pageSize"
-              :total="filteredUsers.length"
+              :total="filteredUserCount"
             />
           </div>
         </div>

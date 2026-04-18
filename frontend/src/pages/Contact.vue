@@ -5,7 +5,7 @@
       <AdminCoverEditor
         setting-key="contact-hero"
         :initial-image-url="heroImageUrl"
-        @updated="heroImageUrl = $event"
+        @updated="updateHeroImage($event)"
       />
       <div class="contact-hero__content">
         <p class="contact-hero__eyebrow">Ask us</p>
@@ -19,29 +19,14 @@
 
     <main class="contact-main">
       <section class="contact-cards" aria-label="Contact details">
-        <article class="contact-card">
-          <div class="contact-card__icon">
-            <i class="pi pi-envelope"></i>
-          </div>
-          <h2>Email us</h2>
-          <p>foodfindersupport@gmail.com</p>
-        </article>
-
-        <article class="contact-card">
-          <div class="contact-card__icon">
-            <i class="pi pi-map-marker"></i>
-          </div>
-          <h2>Based in</h2>
-          <p>San Francisco, CA</p>
-        </article>
-
-        <article class="contact-card">
-          <div class="contact-card__icon">
-            <i class="pi pi-clock"></i>
-          </div>
-          <h2>Response time</h2>
-          <p>Within 24 hours</p>
-        </article>
+        <ContactInfoCard
+          v-for="card in contactCards"
+          :key="card.title"
+          :icon="card.icon"
+          :title="card.title"
+          :text="card.text"
+          :href="card.href"
+        />
       </section>
 
       <section class="contact-content">
@@ -143,17 +128,37 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
+import { reactive, ref } from "vue";
 import AdminCoverEditor from "../components/common/AdminCoverEditor.vue";
+import ContactInfoCard from "../components/contact/ContactInfoCard.vue";
 import heroImage from "../assets/images/hero.jpg";
+import { useEditableHero } from "../composables/useEditableHero";
 
 const MAX_MESSAGE_LENGTH = 1000;
 
-const heroImageUrl = ref(heroImage);
+const { heroImageUrl, heroBackgroundStyle, updateHeroImage } = useEditableHero(
+  heroImage,
+  "linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%)",
+);
 
-const heroBackgroundStyle = computed(() => ({
-  backgroundImage: `linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%), url(${heroImageUrl.value})`,
-}));
+const contactCards = [
+  {
+    icon: "pi-envelope",
+    title: "Email us",
+    text: "foodfindersupport@gmail.com",
+    href: "mailto:foodfindersupport@gmail.com",
+  },
+  {
+    icon: "pi-map-marker",
+    title: "Based in",
+    text: "San Francisco, CA",
+  },
+  {
+    icon: "pi-clock",
+    title: "Response time",
+    text: "Within 24 hours",
+  },
+];
 
 const form = reactive({
   name: "",
@@ -275,46 +280,17 @@ async function handleSubmit() {
   align-items: start;
 }
 
-.contact-card,
 .faq-card {
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 12px 28px rgba(34, 26, 20, 0.08);
 }
 
-.contact-card {
-  padding: 26px 24px;
-  text-align: center;
-}
-
-.contact-card__icon {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 14px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 114, 76, 0.1);
-  color: #ef8358;
-  font-size: 1rem;
-}
-
-.contact-card h2,
 .message-panel h2,
 .faq-panel h2 {
   margin: 0;
   color: #332d28;
   letter-spacing: 0;
-}
-
-.contact-card h2 {
-  font-size: 1rem;
-}
-
-.contact-card p {
-  margin: 8px 0 0;
-  color: #9a8f85;
-  font-size: 0.92rem;
 }
 
 .contact-content {
@@ -459,8 +435,5 @@ async function handleSubmit() {
     padding: 104px 18px 92px;
   }
 
-  .contact-card {
-    padding: 22px 18px;
-  }
 }
 </style>

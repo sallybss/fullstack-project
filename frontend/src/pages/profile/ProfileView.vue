@@ -84,12 +84,18 @@
               </button>
             </div>
 
-            <div v-if="activeSection === 'posts' && pagedRecipes.length === 0" class="empty-state">
+            <div
+              v-if="activeSection === 'posts' && pagedRecipes.length === 0"
+              class="empty-state"
+            >
               <h2>No recipes yet</h2>
               <p>This user has not published any recipes yet.</p>
             </div>
 
-            <div v-else-if="activeSection === 'saved' && pagedSavedRecipes.length === 0" class="empty-state">
+            <div
+              v-else-if="activeSection === 'saved' && pagedSavedRecipes.length === 0"
+              class="empty-state"
+            >
               <h2>No saved recipes yet</h2>
               <p>This user has not saved any recipes yet.</p>
             </div>
@@ -108,7 +114,7 @@
 
             <div class="pager" v-if="activeTotal > pageSize">
               <PaginationBar
-                v-model:page="page"
+                v-model:page="activePage"
                 :pageSize="pageSize"
                 :total="activeTotal"
               />
@@ -160,6 +166,7 @@ import HeroSection from "../../components/common/HeroSection.vue";
 import RecipeCard from "../../components/recipes/RecipeCard.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
+import { usePagination } from "../../composables/usePagination";
 
 import type { Profile } from "../../interfaces/user";
 import type { Recipe } from "../../interfaces/recipe";
@@ -185,20 +192,36 @@ const peopleModal = ref<"followers" | "following" | null>(null);
 
 const profileId = computed(() => String(route.params.id || ""));
 const pageSize = 8;
-const page = ref(1);
+const {
+  page: postsPage,
+  totalItems: totalPosts,
+  pagedItems: pagedRecipes,
+  syncPageWithinBounds: syncPostsPageWithinBounds,
+} = usePagination(userRecipes, pageSize);
+const {
+  page: savedPage,
+  totalItems: totalSavedRecipes,
+  pagedItems: pagedSavedRecipes,
+} = usePagination(savedRecipes, pageSize);
+const activePage = computed({
+  get: () =>
+    activeSection.value === "posts"
+      ? postsPage.value
+      : savedPage.value,
+  set: (value: number) => {
+    if (activeSection.value === "posts") {
+      postsPage.value = value;
+      return;
+    }
 
-const pagedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return userRecipes.value.slice(start, start + pageSize);
-});
-
-const pagedSavedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return savedRecipes.value.slice(start, start + pageSize);
+    savedPage.value = value;
+  },
 });
 
 const activeTotal = computed(() =>
-  activeSection.value === "posts" ? userRecipes.value.length : savedRecipes.value.length,
+  activeSection.value === "posts"
+    ? totalPosts.value
+    : totalSavedRecipes.value,
 );
 
 const ownerInitial = computed(() => {
@@ -355,11 +378,7 @@ async function handleAdminDeleteRecipe(recipeId: string) {
 
   await deleteRecipe(recipeId);
   userRecipes.value = userRecipes.value.filter((recipe) => recipe._id !== recipeId);
-
-  const totalPages = Math.max(1, Math.ceil(userRecipes.value.length / pageSize));
-  if (page.value > totalPages) {
-    page.value = totalPages;
-  }
+  syncPostsPageWithinBounds();
 }
 </script>
 

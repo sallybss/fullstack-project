@@ -26,6 +26,7 @@ const avatarUrl = ref("");
 const currentPassword = ref("");
 const newPassword = ref("");
 const confirmPassword = ref("");
+const showPasswords = ref(false);
 const profileMessage = ref("");
 const passwordMessage = ref("");
 const passwordError = ref("");
@@ -191,24 +192,29 @@ async function removeAccount() {
         <div class="formGrid">
           <div class="field field--full">
             <label>Current password</label>
-            <input v-model="currentPassword" type="password" />
+            <input v-model="currentPassword" :type="showPasswords ? 'text' : 'password'" />
           </div>
 
           <div class="field field--full">
             <label>New password</label>
-            <input v-model="newPassword" type="password" />
+            <input v-model="newPassword" :type="showPasswords ? 'text' : 'password'" />
           </div>
 
           <div class="field field--full">
             <label>Confirm new password</label>
-            <input v-model="confirmPassword" type="password" />
+            <input v-model="confirmPassword" :type="showPasswords ? 'text' : 'password'" />
           </div>
 
           <p v-if="passwordMessage" class="success">{{ passwordMessage }}</p>
           <p v-if="passwordError" class="error">{{ passwordError }}</p>
         </div>
 
-        <div class="actions">
+        <div class="actions actions--split">
+          <label class="passwordToggle">
+            <input v-model="showPasswords" type="checkbox" />
+            <span>Show password</span>
+          </label>
+
           <BaseButton variant="outline" type="button" @click="cancelPassword">
             Cancel
           </BaseButton>
@@ -401,11 +407,35 @@ textarea {
   resize: vertical;
 }
 
+.passwordToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  margin-right: auto;
+  color: #7a6d61;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: none;
+  cursor: pointer;
+}
+
+.passwordToggle input {
+  width: auto;
+  margin: 0;
+  accent-color: #f08b62;
+  box-shadow: none;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
   margin-top: 22px;
+}
+
+.actions--split {
+  align-items: center;
 }
 
 .success,
@@ -455,6 +485,14 @@ textarea {
   .deleteHead {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .actions--split {
+    align-items: stretch;
+  }
+
+  .passwordToggle {
+    margin-right: 0;
   }
 
   .dangerBtn {

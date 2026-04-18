@@ -10,13 +10,22 @@
     </button>
 
     <div v-if="isOpen" class="coverEditor__panel">
-      <label class="coverEditor__label" :for="inputId">Cover image URL</label>
+      <label class="coverEditor__label">Cover image</label>
+
+      <div class="coverEditor__dropzone" @click="fileInput?.click()" @dragover.prevent @drop.prevent="onDrop">
+        <img v-if="previewUrl" :src="previewUrl" class="coverEditor__preview" alt="Preview" />
+        <div v-else class="coverEditor__placeholder">
+          <i class="pi pi-image"></i>
+          <span>Click or drag an image here</span>
+        </div>
+      </div>
+
       <input
-        :id="inputId"
-        v-model.trim="draftUrl"
-        class="coverEditor__input"
-        type="url"
-        placeholder="https://..."
+        ref="fileInput"
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        class="coverEditor__fileInput"
+        @change="onFileChange"
       />
 
       <p v-if="errorMessage" class="coverEditor__error">{{ errorMessage }}</p>
@@ -25,8 +34,8 @@
         <button class="coverEditor__secondary" type="button" @click="closePanel">
           Cancel
         </button>
-        <button class="coverEditor__primary" type="button" :disabled="isSaving" @click="save">
-          {{ isSaving ? "Saving..." : "Save" }}
+        <button class="coverEditor__primary" type="button" :disabled="isSaving || !selectedFile" @click="save">
+          {{ isSaving ? "Uploading..." : "Save" }}
         </button>
       </div>
     </div>
@@ -34,7 +43,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { ref, watch } from "vue";
+import { useAuthSession } from "../../composables/useAuthSession";
 
 const props = defineProps<{
   settingKey: string;
@@ -46,11 +56,12 @@ const emit = defineEmits<{
 }>();
 
 const API_URL = import.meta.env.VITE_API_URL;
-const isAdmin = computed(() => localStorage.getItem("userRole") === "admin");
-const inputId = `cover-editor-${props.settingKey}`;
+const { isAdmin, token } = useAuthSession();
 
 const currentUrl = ref(props.initialImageUrl);
-const draftUrl = ref(props.initialImageUrl);
+const previewUrl = ref<string | null>(null);
+const selectedFile = ref<File | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
 const isSaving = ref(false);
 const isOpen = ref(false);
 const errorMessage = ref("");
@@ -60,7 +71,7 @@ watch(
   (nextValue) => {
     currentUrl.value = nextValue;
     if (!isOpen.value) {
-      draftUrl.value = nextValue;
+      previewUrl.value = nextValue || null;
     }
   },
   { immediate: true },
@@ -83,7 +94,7 @@ async function loadSavedCover() {
     const savedUrl = payload?.data?.imageUrl;
     if (savedUrl) {
       currentUrl.value = savedUrl;
-      draftUrl.value = savedUrl;
+      previewUrl.value = savedUrl;
       emit("updated", savedUrl);
     }
   } catch {
@@ -91,15 +102,41 @@ async function loadSavedCover() {
   }
 }
 
+function onFileChange(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (file) setFile(file);
+}
+
+function onDrop(event: DragEvent) {
+  const file = event.dataTransfer?.files?.[0];
+  if (file) setFile(file);
+}
+
+function setFile(file: File) {
+  errorMessage.value = "";
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    errorMessage.value = "Only JPG, PNG, or WebP images are allowed.";
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    errorMessage.value = "Image must be under 8 MB.";
+    return;
+  }
+  selectedFile.value = file;
+  previewUrl.value = URL.createObjectURL(file);
+}
+
 function closePanel() {
   isOpen.value = false;
-  draftUrl.value = currentUrl.value;
+  selectedFile.value = null;
+  previewUrl.value = currentUrl.value || null;
   errorMessage.value = "";
+  if (fileInput.value) fileInput.value.value = "";
 }
 
 async function save() {
-  if (!draftUrl.value) {
-    errorMessage.value = "Please enter an image URL.";
+  if (!selectedFile.value) {
+    errorMessage.value = "Please select an image file.";
     return;
   }
 
@@ -107,25 +144,29 @@ async function save() {
     isSaving.value = true;
     errorMessage.value = "";
 
-    const response = await fetch(`${API_URL}/api/settings/hero/${encodeURIComponent(props.settingKey)}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        "auth-token": localStorage.getItem("lsToken") || "",
-      },
-      body: JSON.stringify({ imageUrl: draftUrl.value }),
-    });
+    const formData = new FormData();
+    formData.append("cover", selectedFile.value);
+
+    const response = await fetch(
+      `${API_URL}/api/settings/hero/${encodeURIComponent(props.settingKey)}/upload`,
+      {
+        method: "POST",
+        headers: { "auth-token": token.value || "" },
+        body: formData,
+      }
+    );
 
     const payload = await response.json().catch(() => null);
     if (!response.ok) {
-      throw new Error(payload?.error || "Failed to update cover image.");
+      throw new Error(payload?.error || "Failed to upload cover image.");
     }
 
-    currentUrl.value = payload?.data?.imageUrl || draftUrl.value;
-    emit("updated", currentUrl.value);
+    const newUrl = payload?.data?.imageUrl;
+    currentUrl.value = newUrl;
+    emit("updated", `${API_URL}${newUrl}`);
     closePanel();
   } catch (error) {
-    errorMessage.value = (error as Error).message || "Failed to update cover image.";
+    errorMessage.value = (error as Error).message || "Failed to upload cover image.";
   } finally {
     isSaving.value = false;
   }
@@ -179,14 +220,45 @@ async function save() {
   text-align: left;
 }
 
-.coverEditor__input {
+.coverEditor__dropzone {
   width: 100%;
-  border: 1px solid #e5d8cc;
+  height: 140px;
+  border: 2px dashed #e5d8cc;
   border-radius: 12px;
   background: #fff;
-  padding: 12px 14px;
-  color: #2f2824;
-  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.2s;
+}
+
+.coverEditor__dropzone:hover {
+  border-color: #ef8358;
+}
+
+.coverEditor__preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.coverEditor__placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #a89080;
+  font-size: 0.84rem;
+}
+
+.coverEditor__placeholder .pi {
+  font-size: 2rem;
+}
+
+.coverEditor__fileInput {
+  display: none;
 }
 
 .coverEditor__error {

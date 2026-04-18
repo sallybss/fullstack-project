@@ -5,7 +5,7 @@
       <AdminCoverEditor
         setting-key="privacy-policy-hero"
         :initial-image-url="heroImageUrl"
-        @updated="heroImageUrl = $event"
+        @updated="updateHeroImage($event)"
       />
       <div class="privacy-hero__content">
         <p class="privacy-hero__eyebrow">Privacy Policy</p>
@@ -27,20 +27,13 @@
           </p>
         </article>
 
-        <article
+        <PolicySectionCard
           v-for="section in policySections"
           :key="section.title"
-          class="policy-row"
-        >
-          <div class="policy-row__icon">
-            <i class="pi" :class="section.icon"></i>
-          </div>
-
-          <div class="policy-row__content">
-            <h2>{{ section.title }}</h2>
-            <p>{{ section.text }}</p>
-          </div>
-        </article>
+          :title="section.title"
+          :icon="section.icon"
+          :text="section.text"
+        />
 
         <article class="privacy-cta">
           <h2>Questions About Privacy?</h2>
@@ -60,15 +53,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
 import AdminCoverEditor from "../components/common/AdminCoverEditor.vue";
+import PolicySectionCard from "../components/privacy/PolicySectionCard.vue";
 import heroImage from "../assets/images/hero.jpg";
+import { useEditableHero } from "../composables/useEditableHero";
 
-const heroImageUrl = ref(heroImage);
-
-const heroBackgroundStyle = computed(() => ({
-  backgroundImage: `linear-gradient(180deg, rgba(13, 10, 8, 0.34) 0%, rgba(13, 10, 8, 0.66) 100%), url(${heroImageUrl.value})`,
-}));
+const { heroImageUrl, heroBackgroundStyle, updateHeroImage } = useEditableHero(
+  heroImage,
+  "linear-gradient(180deg, rgba(13, 10, 8, 0.34) 0%, rgba(13, 10, 8, 0.66) 100%)",
+);
 
 const policySections = [
   {
@@ -185,8 +178,7 @@ const policySections = [
   gap: 14px;
 }
 
-.intro-card,
-.policy-row {
+.intro-card {
   border-radius: 18px;
   background: #fff;
   box-shadow: 0 12px 28px rgba(34, 26, 20, 0.08);
@@ -201,39 +193,6 @@ const policySections = [
   color: #6f645b;
   line-height: 1.72;
   font-size: 0.95rem;
-}
-
-.policy-row {
-  display: grid;
-  grid-template-columns: 58px minmax(0, 1fr);
-  gap: 12px;
-  align-items: center;
-  padding: 16px 18px;
-}
-
-.policy-row__icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: rgba(240, 139, 98, 0.12);
-  color: #e18a5d;
-  font-size: 1rem;
-}
-
-.policy-row__content h2 {
-  margin: 0 0 4px;
-  color: #322c28;
-  font-size: 1.08rem;
-  line-height: 1.2;
-}
-
-.policy-row__content p {
-  margin: 0;
-  color: #7f7369;
-  font-size: 0.92rem;
-  line-height: 1.65;
 }
 
 .privacy-cta {
@@ -289,12 +248,6 @@ const policySections = [
   .privacy-hero {
     height: 360px;
     padding: 104px 18px 84px;
-  }
-
-  .policy-row {
-    grid-template-columns: 1fr;
-    justify-items: start;
-    gap: 10px;
   }
 
   .privacy-cta {
