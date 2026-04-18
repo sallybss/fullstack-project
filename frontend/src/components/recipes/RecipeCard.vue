@@ -29,25 +29,42 @@
     <h3 class="card__title">{{ recipe.title }}</h3>
 
     <div class="card__actions">
-      <BaseButton
-        variant="outline"
-        class="card__view"
-        type="button"
-        @click="handleViewClick"
-      >
-        View
-      </BaseButton>
+      <template v-if="plannerMode">
+        <button
+          class="plannerBtn"
+          :class="{
+            'plannerBtn--added': plannerAdded,
+            'plannerBtn--disabled': plannerDisabled,
+          }"
+          :disabled="plannerDisabled && !plannerAdded"
+          type="button"
+          @click="handlePlannerAddClick"
+        >
+          {{ plannerAdded ? "Added" : plannerLabel }}
+        </button>
+      </template>
 
-      <button
-        class="saveBtn"
-        :class="{ 'saveBtn--active': recipe.saved }"
-        @click="handleSaveClick"
-      >
-        <i
-          class="pi"
-          :class="recipe.saved ? 'pi-bookmark-fill' : 'pi-bookmark'"
-        ></i>
-      </button>
+      <template v-else>
+        <BaseButton
+          variant="outline"
+          class="card__view"
+          type="button"
+          @click="handleViewClick"
+        >
+          View
+        </BaseButton>
+
+        <button
+          class="saveBtn"
+          :class="{ 'saveBtn--active': recipe.saved }"
+          @click="handleSaveClick"
+        >
+          <i
+            class="pi"
+            :class="recipe.saved ? 'pi-bookmark-fill' : 'pi-bookmark'"
+          ></i>
+        </button>
+      </template>
     </div>
   </article>
 </template>
@@ -64,11 +81,16 @@ const { isLoggedIn } = useUser();
 
 const props = defineProps<{
   recipe: Recipe;
+  plannerMode?: boolean;
+  plannerAdded?: boolean;
+  plannerDisabled?: boolean;
+  plannerLabel?: string;
 }>();
 
 const emit = defineEmits<{
   (e: "auth-required"): void;
   (e: "save-click", recipeId: string): void;
+  (e: "planner-add", recipeId: string): void;
 }>();
 
 const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
@@ -123,6 +145,14 @@ function handleSaveClick() {
   }
 
   emit("save-click", props.recipe._id);
+}
+
+function handlePlannerAddClick() {
+  if (props.plannerDisabled) {
+    return;
+  }
+
+  emit("planner-add", props.recipe._id);
 }
 
 // Falls back to a placeholder if image URL is broken
@@ -232,5 +262,31 @@ function handleImageError(event: Event) {
 .saveBtn:hover {
   border-color: #ff734c;
 ;
+}
+
+.plannerBtn {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: #ff724c;
+  color: white;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.plannerBtn--added,
+.plannerBtn--disabled {
+  background: #f3f3f5;
+  color: #888;
+}
+
+.plannerBtn--added {
+  cursor: pointer;
+}
+
+.plannerBtn--disabled {
+  cursor: not-allowed;
 }
 </style>

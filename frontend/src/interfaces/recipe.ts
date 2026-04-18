@@ -18,6 +18,7 @@ export type Recipe = {
   cookTimeMinutes: number;
   servings: number;
   cuisine: string;
+  mealType?: "breakfast" | "lunch" | "dinner";
   isPublic: boolean;
   createdAt?: string;
   updatedAt?: string;
