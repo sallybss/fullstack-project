@@ -4,6 +4,8 @@ import Home from "../pages/Home.vue";
 import About from "../pages/About.vue";
 import Contact from "../pages/Contact.vue";
 import SavedRecipes from "../pages/SavedRecipes.vue";
+import MealPlans from "../pages/MealPlans.vue";
+import MealPlanEditor from "../pages/MealPlanEditor.vue";
 
 import SignIn from "../pages/auth/SignIn.vue";
 import SignUp from "../pages/auth/SignUp.vue";
@@ -21,6 +23,9 @@ const routes = [
   { path: "/about", name: "about", component: About },
   { path: "/contact", name: "contact", component: Contact },
   { path: "/saved", name: "saved", component: SavedRecipes, meta: { requiresAuth: true } },
+  { path: "/meal-plans", name: "meal-plans", component: MealPlans },
+  { path: "/meal-plans/create", name: "meal-plans-create", component: MealPlanEditor },
+  { path: "/meal-plans/:id/edit", name: "meal-plans-edit", component: MealPlanEditor },
 
   { path: "/signin", name: "signin", component: SignIn, meta: { hideLayout: true } },
   { path: "/signup", name: "signup", component: SignUp, meta: { hideLayout: true } },
@@ -41,6 +46,13 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
+  scrollBehavior(_to, _from, savedPosition) {
+    if (savedPosition) {
+      return savedPosition;
+    }
+
+    return { top: 0, left: 0 };
+  },
 });
 
 router.beforeEach((to) => {

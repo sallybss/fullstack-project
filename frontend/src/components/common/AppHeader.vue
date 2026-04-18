@@ -16,6 +16,9 @@
         <RouterLink to="/about" class="nav__link" active-class="is-active">
           About
         </RouterLink>
+        <RouterLink to="/meal-plans" class="nav__link" active-class="is-active">
+          Meal Planner
+        </RouterLink>
         <RouterLink to="/contact" class="nav__link" active-class="is-active">
           Ask us
         </RouterLink>
@@ -74,6 +77,9 @@
         </RouterLink>
         <RouterLink to="/about" class="mobileMenu__link" active-class="is-active" @click="closeMobileMenu">
           About
+        </RouterLink>
+        <RouterLink to="/meal-plans" class="mobileMenu__link" active-class="is-active" @click="closeMobileMenu">
+          Meal Planner
         </RouterLink>
         <RouterLink to="/contact" class="mobileMenu__link" active-class="is-active" @click="closeMobileMenu">
           Ask us
