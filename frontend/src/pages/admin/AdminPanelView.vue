@@ -5,6 +5,7 @@ import { useRouter } from "vue-router";
 import HeroSection from "../../components/common/HeroSection.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
+import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
 
 import { useUser } from "../../modules/auth/useUser";
 import { useRecipes } from "../../modules/useRecipes";
@@ -46,10 +47,6 @@ const pagedUsers = computed(() => {
   const start = (page.value - 1) * pageSize;
   return filteredUsers.value.slice(start, start + pageSize);
 });
-
-function goBack() {
-  router.back();
-}
 
 function recipeCountForUser(userId: string) {
   return recipes.value.filter((recipe) => recipe.owner?._id === userId).length;
@@ -114,29 +111,11 @@ function viewPosts(id: string) {
     <main class="container">
       <div class="card">
         <div class="top">
-          <div class="topLeft">
-            <button class="back" type="button" @click="goBack">← Go back</button>
-
-            <div class="tabs">
-              <button
-                class="tab"
-                type="button"
-                @click="router.push({ name: 'my-profile' })"
-              >
-                Profile
-              </button>
-
-              <button
-                class="tab"
-                type="button"
-                @click="router.push({ name: 'my-profile-advanced' })"
-              >
-                Advanced
-              </button>
-
-              <button class="tab is-active" type="button">Admin Panel</button>
-            </div>
-          </div>
+          <ProfileTabsBar
+            active-tab="admin"
+            :show-admin="true"
+            back-fallback-name="my-profile"
+          />
 
           <div class="searchWrap">
             <input v-model="search" class="searchInput" type="text" placeholder="Search users" />
@@ -266,3 +245,269 @@ function viewPosts(id: string) {
     </main>
   </div>
 </template>
+
+<style scoped>
+.page {
+  background: #f6f6fb;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1180px;
+  margin: -180px auto 60px;
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
+}
+
+.card {
+  background: #fff;
+  border-radius: 28px;
+  padding: 22px;
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.searchWrap {
+  width: min(320px, 100%);
+}
+
+.searchInput {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid #ddd;
+  border-radius: 999px;
+  padding: 0 16px;
+  font: inherit;
+  background: #fff;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: rgba(255, 114, 76, 0.58);
+  box-shadow: 0 0 0 4px rgba(255, 114, 76, 0.12);
+}
+
+.head {
+  margin-top: 22px;
+}
+
+.title {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.05;
+  color: #1f1711;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: #7a6d61;
+  font-size: 14px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 22px;
+}
+
+.statCard {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  border-radius: 20px;
+  background: #f6f6fb;
+}
+
+.statIcon {
+  width: 48px;
+  height: 48px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: #ff724c;
+  font-size: 18px;
+}
+
+.statValue {
+  font-size: 24px;
+  font-weight: 800;
+  color: #1f1711;
+}
+
+.statLabel {
+  color: #7a6d61;
+  font-size: 13px;
+}
+
+.tableWrap {
+  margin-top: 24px;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.table th,
+.table td {
+  padding: 16px 14px;
+  text-align: left;
+  border-bottom: 1px solid #eee6db;
+}
+
+.table th {
+  color: #7f7368;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.actionsCol {
+  text-align: right;
+}
+
+.userCell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #f1f1f6;
+  color: #333;
+  font-weight: 800;
+}
+
+.userName {
+  font-weight: 700;
+  color: #1f1711;
+}
+
+.userEmail {
+  color: #7a6d61;
+  font-size: 13px;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.status.is-active {
+  background: #edf8ef;
+  color: #24663a;
+}
+
+.status.is-blocked {
+  background: #fff0f0;
+  color: #a33b3b;
+}
+
+.rowActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+.circleBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 114, 76, 0.24);
+  background: #fff;
+  color: #ff724c;
+  cursor: pointer;
+}
+
+.circleBtn--danger {
+  border-color: #efc8be;
+  color: #c95f45;
+  background: #fff7f4;
+}
+
+.emptyState {
+  margin-top: 24px;
+  padding: 28px;
+  border-radius: 22px;
+  background: #f6f6fb;
+  text-align: center;
+  color: #6d6359;
+}
+
+.emptyState h2 {
+  margin: 0;
+  color: #1f1711;
+}
+
+.emptyState p {
+  margin: 8px 0 0;
+}
+
+.pager {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .container {
+    margin-top: -150px;
+  }
+
+  .top {
+    flex-direction: column;
+  }
+
+  .searchWrap {
+    width: 100%;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    width: min(94vw, 1180px);
+    margin-top: -120px;
+  }
+
+  .card {
+    padding: 18px;
+  }
+
+  .table th,
+  .table td {
+    padding: 12px 10px;
+  }
+
+  .rowActions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+</style>

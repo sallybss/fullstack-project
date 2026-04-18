@@ -5,6 +5,7 @@ import { useRouter } from "vue-router";
 import HeroSection from "../../components/common/HeroSection.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
+import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
 import AdvancedRecipeCard from "../../components/recipes/AdvancedRecipeCard.vue";
 
 import { useRecipes } from "../../modules/useRecipes";
@@ -61,16 +62,10 @@ const initials = computed(() => {
     .toUpperCase();
 });
 
-const isAdmin = computed(() => user.value?.role === "admin");
-
 onMounted(async () => {
   await fetchCurrentUser();
   await Promise.all([loadMyRecipes(), loadSavedRecipes(), loadConnections()]);
 });
-
-function goBack() {
-  router.back();
-}
 
 function editRecipe(id: string) {
   router.push({ name: "edit-recipe", params: { id } });
@@ -180,30 +175,11 @@ async function handleToggleSave(recipeId: string) {
     <main class="container">
       <div class="card">
         <div class="top">
-          <div class="topLeft">
-            <button class="back" type="button" @click="goBack">← Go back</button>
-
-            <div class="tabs">
-              <button class="tab is-active" type="button">Profile</button>
-
-              <button
-                class="tab"
-                type="button"
-                @click="router.push({ name: 'my-profile-advanced' })"
-              >
-                Advanced
-              </button>
-
-              <button
-                v-if="isAdmin"
-                class="tab"
-                type="button"
-                @click="router.push({ name: 'admin-panel' })"
-              >
-                Admin Panel
-              </button>
-            </div>
-          </div>
+          <ProfileTabsBar
+            active-tab="profile"
+            :show-admin="true"
+            back-fallback-name="home"
+          />
         </div>
 
         <div class="header">
@@ -307,7 +283,7 @@ async function handleToggleSave(recipeId: string) {
     >
       <div class="people-modal">
         <div class="people-modal__head">
-          <h2>{{ peopleModal === 'followers' ? 'Followers' : 'Following' }}</h2>
+          <h2>{{ peopleModal === "followers" ? "Followers" : "Following" }}</h2>
           <button class="people-modal__close" type="button" @click="closePeopleModal">×</button>
         </div>
 
@@ -315,7 +291,7 @@ async function handleToggleSave(recipeId: string) {
           v-if="(peopleModal === 'followers' ? followers : following).length === 0"
           class="list-empty"
         >
-          {{ peopleModal === 'followers' ? 'No followers yet.' : 'Not following anyone yet.' }}
+          {{ peopleModal === "followers" ? "No followers yet." : "Not following anyone yet." }}
         </p>
 
         <div v-else class="people-list">
@@ -359,40 +335,6 @@ async function handleToggleSave(recipeId: string) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-}
-
-.topLeft {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-width: 240px;
-}
-
-.back {
-  border: 0;
-  background: transparent;
-  color: #666;
-  padding: 6px 0;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.tabs {
-  display: inline-flex;
-  gap: 10px;
-}
-
-.tab {
-  border: 1px solid rgba(255, 114, 76, 0.35);
-  background: #fff;
-  border-radius: 999px;
-  padding: 10px 16px;
-  cursor: pointer;
-}
-
-.tab.is-active {
-  background: #ff724c;
-  color: #fff;
 }
 
 .header {

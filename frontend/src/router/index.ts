@@ -38,7 +38,7 @@ const routes = [
 
   { path: "/my-profile", name: "my-profile", component: MyProfileView, alias: "/me", meta: { requiresAuth: true } },
   { path: "/my-profile/advanced", name: "my-profile-advanced", component: MyProfileAdvance, alias: "/me/advanced", meta: { requiresAuth: true } },
-  { path: "/me/admin", name: "admin-panel", component: AdminPanelView, meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: "/me/admin", name: "admin-panel", component: AdminPanelView, meta: { requiresAuth: true } },
 
   { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
 ];
@@ -57,14 +57,9 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const loggedIn = Boolean(localStorage.getItem("lsToken"));
-  const role = localStorage.getItem("userRole");
 
   if (to.meta.requiresAuth && !loggedIn) {
     return { name: "signin" };
-  }
-
-  if (to.meta.requiresAdmin && role !== "admin") {
-    return { name: "my-profile" };
   }
 
   return true;
