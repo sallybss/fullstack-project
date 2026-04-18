@@ -19,16 +19,22 @@
 
       <div class="actions">
         <BaseButton
+          v-if="showFollowAction"
+          :variant="isFollowing ? 'outline' : 'primary'"
+          class="actionBtn"
+          type="button"
+          @click="$emit('toggle-follow')"
+        >
+          {{ isFollowing ? "Following" : "Follow" }}
+        </BaseButton>
+
+        <BaseButton
           variant="outline"
           class="actionBtn"
           type="button"
           @click="goToProfile"
         >
           View profile
-        </BaseButton>
-
-        <BaseButton variant="primary" class="actionBtn" type="button">
-          Follow
         </BaseButton>
       </div>
     </div>
@@ -63,6 +69,7 @@
 
       <span class="metaItem rating">
         <Rating :modelValue="roundedRating" :cancel="false" readonly />
+        <span class="average">{{ formattedAverageRating }}</span>
         <span class="count">({{ ratingCount }})</span>
       </span>
     </div>
@@ -76,9 +83,28 @@
         <h2>Ingredients</h2>
 
         <ul class="list">
-          <li v-for="(ing, i) in recipe.ingredients ?? []" :key="i" class="li">
-            <span class="dot"></span>
-            <span>{{ ing }}</span>
+          <li
+            v-for="(ing, i) in recipe.ingredients ?? []"
+            :key="`${recipe._id}-${i}`"
+            class="li"
+          >
+            <label class="ingredientItem">
+              <input
+                :checked="completedIngredients.has(i)"
+                type="checkbox"
+                class="ingredientItem__checkbox"
+                @change="toggleIngredient(i)"
+              />
+              <span class="ingredientItem__indicator">
+                <i class="pi pi-check"></i>
+              </span>
+              <span
+                class="ingredientItem__text"
+                :class="{ 'ingredientItem__text--done': completedIngredients.has(i) }"
+              >
+                {{ ing }}
+              </span>
+            </label>
           </li>
 
           <li v-if="!recipe.ingredients?.length" class="empty">
@@ -105,7 +131,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import Avatar from "primevue/avatar";
 import Rating from "primevue/rating";
@@ -114,14 +140,26 @@ import type { Recipe } from "../../interfaces/recipe";
 
 const props = defineProps<{
   recipe: Recipe;
+  isFollowing?: boolean;
+  showFollowAction?: boolean;
 }>();
 
 defineEmits<{
   (e: "back"): void;
   (e: "toggle-save", id: string): void;
+  (e: "toggle-follow"): void;
 }>();
 
 const router = useRouter();
+const completedIngredients = ref<Set<number>>(new Set());
+
+watch(
+  () => props.recipe._id,
+  () => {
+    completedIngredients.value = new Set();
+  },
+  { immediate: true },
+);
 
 // Combine prep + cook time because backend stores them separately
 const totalTime = computed(() => {
@@ -131,6 +169,11 @@ const totalTime = computed(() => {
 // Backend rating comes from ratingSummary
 const averageRating = computed(() => {
   return props.recipe.ratingSummary?.average ?? 0;
+});
+
+const formattedAverageRating = computed(() => {
+  if (!ratingCount.value) return "0.0";
+  return averageRating.value.toFixed(1);
 });
 
 const roundedRating = computed(() => {
@@ -156,6 +199,18 @@ function goToProfile() {
     name: "profile",
     params: { id: ownerId },
   });
+}
+
+function toggleIngredient(index: number) {
+  const next = new Set(completedIngredients.value);
+
+  if (next.has(index)) {
+    next.delete(index);
+  } else {
+    next.add(index);
+  }
+
+  completedIngredients.value = next;
 }
 </script>
 
@@ -282,6 +337,11 @@ function goToProfile() {
   color: #777;
 }
 
+.average {
+  color: #555;
+  font-weight: 600;
+}
+
 .desc {
   margin: 14px 0 0;
   color: #6f6f6f;
@@ -316,18 +376,54 @@ function goToProfile() {
 }
 
 .li {
-  display: flex;
-  align-items: center;
-  gap: 12px;
   color: #666;
 }
 
-.dot {
+.ingredientItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.ingredientItem__checkbox {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ingredientItem__indicator {
   width: 18px;
   height: 18px;
   border: 2px solid #ff724c;
   border-radius: 50%;
-  display: inline-block;
+  color: transparent;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+
+.ingredientItem__indicator .pi {
+  font-size: 10px;
+}
+
+.ingredientItem__checkbox:checked + .ingredientItem__indicator {
+  background: #ff724c;
+  border-color: #ff724c;
+  color: #fff;
+}
+
+.ingredientItem__text {
+  transition: color 0.18s ease, opacity 0.18s ease;
+}
+
+.ingredientItem__text--done {
+  color: #959595;
+  opacity: 0.82;
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
 }
 
 .olist {

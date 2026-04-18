@@ -1,3 +1,12 @@
+export type RecipeComment = {
+  _id: string;
+  user: string;
+  username: string;
+  text: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type Recipe = {
   _id: string;
   title: string;
@@ -9,6 +18,7 @@ export type Recipe = {
   cookTimeMinutes: number;
   servings: number;
   cuisine: string;
+  mealType?: "breakfast" | "lunch" | "dinner";
   isPublic: boolean;
   createdAt?: string;
   updatedAt?: string;
@@ -16,6 +26,7 @@ export type Recipe = {
     average: number;
     count: number;
   };
+  comments?: RecipeComment[];
   saved?: boolean;
   
   owner?: {

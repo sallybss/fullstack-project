@@ -18,6 +18,7 @@
             v-for="recipe in savedRecipes"
             :key="recipe._id"
             :recipe="recipe"
+            @auth-required="() => {}"
             @save-click="toggleSave"
           />
         </RecipeGrid>

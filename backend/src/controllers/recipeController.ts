@@ -2,7 +2,7 @@ import { type Request, type Response } from "express";
 import { Types } from "mongoose";
 import { recipeModel } from "../models/recipeModel";
 import { userModel } from "../models/userModel";
-import { connect, disconnect } from "../repository/database";
+import { connect } from "../repository/database";
 
 function isValidUrl(value: unknown): boolean {
   if (typeof value !== "string") return false;
@@ -158,8 +158,6 @@ export async function createRecipe(req: Request, res: Response): Promise<void> {
       msg.includes("cookTimeMinutes") ||
       msg.includes("servings");
     res.status(isValidationError ? 400 : 500).send(msg);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -188,8 +186,6 @@ export async function getAllRecipes(req: Request, res: Response) {
     res.status(200).send(result.map((r: any) => withRatingSummary(r.toObject())));
   } catch (err) {
     res.status(500).send("Error retrieving recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -208,8 +204,6 @@ export async function getRecipeById(req: Request, res: Response) {
     res.status(200).send(withRatingSummary(result.toObject()));
   } catch (err) {
     res.status(500).send("Error retrieving recipe by id. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -227,8 +221,6 @@ export async function getRecipesByQuery(req: Request, res: Response) {
     res.status(200).send(result.map((r: any) => withRatingSummary(r.toObject())));
   } catch (err) {
     res.status(500).send("Error retrieving recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -252,8 +244,6 @@ export async function getRecipeComments(req: Request, res: Response) {
     res.status(200).json({ error: null, data: recipe.comments || [] });
   } catch (err) {
     res.status(500).send("Error retrieving recipe comments. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -297,8 +287,6 @@ export async function addRecipeComment(req: Request, res: Response) {
     const msg = String(err?.message || err);
     const isValidationError = msg.includes("Comment text");
     res.status(isValidationError ? 400 : 500).send(msg);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -344,8 +332,6 @@ export async function deleteRecipeComment(req: Request, res: Response) {
     res.status(200).json({ error: null, data: { commentId } });
   } catch (err) {
     res.status(500).send("Error deleting recipe comment. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -395,8 +381,6 @@ export async function updateRecipeComment(req: Request, res: Response) {
     const msg = String(err?.message || err);
     const isValidationError = msg.includes("Comment text");
     res.status(isValidationError ? 400 : 500).send(msg);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -412,10 +396,28 @@ export async function updateRecipeById(req: Request, res: Response) {
       update.imageUrl = `/uploads/recipes/${req.file.filename}`;
     }
 
-    const result = await recipeModel.findByIdAndUpdate(id, update, { new: true });
+    const authUserId = getAuthUserId(req);
+    if (!authUserId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const existingRecipe = await recipeModel.findById(id).select("owner");
+    if (!existingRecipe) {
+      res.status(404).send("Cannot update recipe with id=" + id);
+      return;
+    }
+    if (String(existingRecipe.owner) !== authUserId) {
+      res.status(403).json({ error: "You can only update your own recipes" });
+      return;
+    }
+
+    const result = await recipeModel
+      .findByIdAndUpdate(id, update, { new: true })
+      .populate("owner", "username bio avatarUrl");
 
     if (!result) res.status(404).send("Cannot update recipe with id=" + id);
-    else res.status(200).send(result);
+    else res.status(200).send(withRatingSummary(result.toObject()));
   } catch (err: any) {
     const msg = String(err?.message || err);
     const isValidationError =
@@ -424,8 +426,6 @@ export async function updateRecipeById(req: Request, res: Response) {
       msg.includes("cookTimeMinutes") ||
       msg.includes("servings");
     res.status(isValidationError ? 400 : 500).send(msg);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -435,14 +435,28 @@ export async function deleteRecipeById(req: Request, res: Response) {
   try {
     await connect();
 
+    const authUserId = getAuthUserId(req);
+    if (!authUserId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const existingRecipe = await recipeModel.findById(id).select("owner");
+    if (!existingRecipe) {
+      res.status(404).send("Cannot delete recipe with id=" + id);
+      return;
+    }
+    if (String(existingRecipe.owner) !== authUserId) {
+      res.status(403).json({ error: "You can only delete your own recipes" });
+      return;
+    }
+
     const result = await recipeModel.findByIdAndDelete(id);
 
     if (!result) res.status(404).send("Cannot delete recipe with id=" + id);
     else res.status(200).send("Recipe was successfully deleted.");
   } catch (err) {
     res.status(500).send("Error deleting recipe by id. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -469,8 +483,6 @@ export async function getFavoriteRecipeIds(req: Request, res: Response) {
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
     res.status(500).send("Error retrieving favorite recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -498,8 +510,6 @@ export async function getFavoriteRecipes(req: Request, res: Response) {
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
     res.status(500).send("Error retrieving favorite recipes. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -537,8 +547,6 @@ export async function addFavoriteRecipe(req: Request, res: Response) {
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
     res.status(500).send("Error adding favorite recipe. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -570,8 +578,6 @@ export async function removeFavoriteRecipe(req: Request, res: Response) {
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
     res.status(500).send("Error removing favorite recipe. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
 
@@ -617,7 +623,5 @@ export async function rateRecipe(req: Request, res: Response) {
       return;
     }
     res.status(500).send("Error rating recipe. Error: " + err);
-  } finally {
-    await disconnect();
   }
 }
