@@ -119,12 +119,13 @@ function pickRecipeBody(body: any) {
   return recipe;
 }
 
-function getAuthUser(req: Request): { id: string; username?: string } | null {
-  const user = (req as any).user as { id?: string } | undefined;
+function getAuthUser(req: Request): { id: string; username?: string; role?: string } | null {
+  const user = (req as any).user as { id?: string; username?: string; role?: string } | undefined;
   if (typeof user?.id !== "string") return null;
   return {
     id: user.id,
-    username: typeof (req as any).user?.username === "string" ? (req as any).user.username : "",
+    username: typeof user.username === "string" ? user.username : "",
+    role: typeof user.role === "string" ? user.role : undefined,
   };
 }
 
@@ -370,8 +371,11 @@ export async function deleteRecipeComment(req: Request, res: Response) {
       return;
     }
 
-    if (String(comment.user) !== authUser.id) {
-      res.status(403).json({ error: "You can only delete your own comments" });
+    const canDeleteComment =
+      String(comment.user) === authUser.id || authUser.role === "admin";
+
+    if (!canDeleteComment) {
+      res.status(403).json({ error: "You can only delete your own comments unless you are an admin" });
       return;
     }
 

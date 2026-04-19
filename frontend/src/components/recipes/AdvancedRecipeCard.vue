@@ -6,12 +6,9 @@ import BaseButton from "../common/BaseButton.vue";
 
 const props = defineProps<{
   recipe: Recipe;
-}>();
-
-const emit = defineEmits<{
-  (e: "toggle-save", id: string): void;
-  (e: "edit", id: string): void;
-  (e: "delete", id: string): void;
+  onToggleSave?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }>();
 
 const router = useRouter();
@@ -86,7 +83,7 @@ function handleImageError(event: Event) {
         type="button"
         :class="{ active: recipe.saved }"
         aria-label="Save"
-        @click="emit('toggle-save', recipe._id)"
+        @click="props.onToggleSave?.(recipe._id)"
       >
         <i class="pi pi-bookmark"></i>
       </button>
@@ -95,7 +92,7 @@ function handleImageError(event: Event) {
         class="iconBtn"
         type="button"
         aria-label="Edit"
-        @click="emit('edit', recipe._id)"
+        @click="props.onEdit?.(recipe._id)"
       >
         <i class="pi pi-pencil"></i>
       </button>
@@ -104,7 +101,7 @@ function handleImageError(event: Event) {
         class="iconBtn danger"
         type="button"
         aria-label="Delete"
-        @click="emit('delete', recipe._id)"
+        @click="props.onDelete?.(recipe._id)"
       >
         <i class="pi pi-trash"></i>
       </button>
@@ -116,6 +113,7 @@ function handleImageError(event: Event) {
 .card {
   display: grid;
   gap: 10px;
+  min-width: 0;
 }
 
 .imgWrap {
@@ -136,6 +134,8 @@ function handleImageError(event: Event) {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
   color: #777;
   font-size: 12px;
 }
@@ -144,12 +144,14 @@ function handleImageError(event: Event) {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-width: 0;
 }
 
 .rating {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+  min-width: 0;
 }
 
 .stars {
@@ -165,6 +167,11 @@ function handleImageError(event: Event) {
   font-size: 14px;
   font-weight: 700;
   color: #222;
+  line-height: 1.3;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .actions {
@@ -207,5 +214,69 @@ function handleImageError(event: Event) {
 
 .iconBtn.danger:hover {
   border-color: rgba(255, 114, 76, 0.6);
+}
+
+@media (max-width: 520px) {
+  .card {
+    gap: 8px;
+    padding: 8px;
+    border-radius: 20px;
+    background: #fff;
+    border: 1px solid #f0edf4;
+    box-shadow: 0 8px 22px rgba(36, 29, 24, 0.05);
+  }
+
+  .metaRow {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-items: start;
+    gap: 6px;
+    font-size: 11px;
+  }
+
+  .time,
+  .rating {
+    gap: 5px;
+    min-height: 28px;
+    padding: 0 9px;
+    border-radius: 999px;
+    background: #f7f6fb;
+  }
+
+  .stars {
+    letter-spacing: 0;
+  }
+
+  .title {
+    font-size: 13px;
+  }
+
+  .actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .viewBtn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .actions .iconBtn:last-child {
+    display: none;
+  }
+
+  .actions .iconBtn {
+    width: 100%;
+  }
+
+  .viewBtn {
+    height: 32px;
+    min-height: 32px;
+    font-size: 12px;
+  }
+
+  .iconBtn {
+    height: 32px;
+  }
 }
 </style>

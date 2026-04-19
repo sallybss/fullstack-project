@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
@@ -19,7 +19,16 @@ const API_URL = import.meta.env.VITE_API_URL;
 const { error, toggleSave, deleteRecipe } = useRecipes();
 const { user, profile, fetchCurrentUser } = useUser();
 
-const pageSize = 8;
+const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
+const pageSize = computed(() => {
+  if (viewportWidth.value <= 520) return 4;
+  if (viewportWidth.value <= 900) return 6;
+  if (viewportWidth.value <= 1100) return 9;
+  return 12;
+});
+const handleResize = () => {
+  viewportWidth.value = window.innerWidth;
+};
 const loadingRecipes = ref(true);
 const myRecipes = ref<Recipe[]>([]);
 const savedRecipes = ref<Recipe[]>([]);
@@ -84,8 +93,13 @@ const initials = computed(() => {
 });
 
 onMounted(async () => {
+  window.addEventListener("resize", handleResize);
   await fetchCurrentUser();
   await Promise.all([loadMyRecipes(), loadSavedRecipes(), loadConnections()]);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", handleResize);
 });
 
 function editRecipe(id: string) {
@@ -287,9 +301,9 @@ async function handleToggleSave(recipeId: string) {
             v-for="r in activeSection === 'posts' ? pagedPosts : pagedSavedRecipes"
             :key="r._id"
             :recipe="r"
-            @toggle-save="handleToggleSave"
-            @edit="editRecipe"
-            @delete="handleDeleteRecipe"
+            :onToggleSave="handleToggleSave"
+            :onEdit="editRecipe"
+            :onDelete="handleDeleteRecipe"
           />
         </section>
 
@@ -381,6 +395,8 @@ async function handleToggleSave(recipeId: string) {
 .avatar {
   width: 56px;
   height: 56px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 56px;
   border-radius: 50%;
   background: #f1f1f6;
   display: grid;
@@ -393,6 +409,7 @@ async function handleToggleSave(recipeId: string) {
 .avatarImage {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
@@ -412,6 +429,7 @@ async function handleToggleSave(recipeId: string) {
   margin: 0;
   color: #888;
   font-size: 13px;
+  line-height: 1.5;
 }
 
 .topRight {
@@ -431,6 +449,7 @@ async function handleToggleSave(recipeId: string) {
   background: #f6f6fb;
   color: #333;
   font-size: 13px;
+  min-height: 46px;
 }
 
 .stat--button {
@@ -475,6 +494,11 @@ async function handleToggleSave(recipeId: string) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
+}
+
+.grid > * {
+  min-width: 0;
 }
 
 .pager {
@@ -541,19 +565,114 @@ async function handleToggleSave(recipeId: string) {
 }
 
 @media (max-width: 900px) {
+  .container {
+    margin-top: -138px;
+  }
+
+  .card {
+    padding: 20px 18px 22px;
+    border-radius: 24px;
+  }
+
   .header {
     align-items: flex-start;
     flex-direction: column;
+    gap: 16px;
+  }
+
+  .topRight {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
+  .container {
+    margin-top: -118px;
+    padding: 0 12px;
+  }
+
+  .card {
+    padding: 18px 16px 20px;
+  }
+
+  .top {
+    gap: 12px;
+  }
+
+  .header {
+    margin-top: 14px;
+    gap: 18px;
+  }
+
+  .left {
+    width: 100%;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .avatar {
+    width: 64px;
+    height: 64px;
+    flex-basis: 64px;
+  }
+
+  .meta {
+    min-width: 0;
+  }
+
+  .name {
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .sub {
+    font-size: 14px;
+  }
+
+  .topRight {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .topRight :deep(.btn) {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 46px;
+  }
+
+  .stat {
+    width: 100%;
+    justify-content: flex-start;
+    padding: 12px 14px;
+    border-radius: 18px;
+    font-size: 14px;
+  }
+
+  .bio {
+    margin: 16px 0 18px;
+    font-size: 15px;
+  }
+
+  .content-tabs {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .content-tab {
+    flex: 1;
+    padding: 10px 12px;
+    text-align: center;
+  }
+
   .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 </style>

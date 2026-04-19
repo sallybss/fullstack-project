@@ -10,6 +10,7 @@ import MealPlanEditor from "../pages/MealPlanEditor.vue";
 
 import SignIn from "../pages/auth/SignIn.vue";
 import SignUp from "../pages/auth/SignUp.vue";
+import ResetPassword from "../pages/auth/ResetPassword.vue";
 import RecipeView from "../pages/recipes/RecipeView.vue";
 import AddRecipe from "../pages/recipes/AddRecipe.vue";
 
@@ -32,6 +33,7 @@ const routes = [
 
   { path: "/signin", name: "signin", component: SignIn, meta: { hideLayout: true } },
   { path: "/signup", name: "signup", component: SignUp, meta: { hideLayout: true } },
+  { path: "/reset-password", name: "reset-password", component: ResetPassword, meta: { hideLayout: true } },
 
   { path: "/recipes/:id", name: "recipe", component: RecipeView },
   { path: "/add-recipe", name: "add-recipe", component: AddRecipe, meta: { requiresAuth: true } },

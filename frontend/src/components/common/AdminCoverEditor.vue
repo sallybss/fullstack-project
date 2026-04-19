@@ -92,10 +92,7 @@ import { getImageDimensions, validateImageDimensions } from "../../composables/u
 const props = defineProps<{
   settingKey: string;
   initialImageUrl: string;
-}>();
-
-const emit = defineEmits<{
-  (e: "updated", imageUrl: string): void;
+  onUpdated?: (imageUrl: string) => void;
 }>();
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -150,7 +147,7 @@ async function loadSavedCover() {
       const fullUrl = toFullUrl(savedUrl);
       currentUrl.value = fullUrl;
       previewUrl.value = fullUrl;
-      emit("updated", fullUrl);
+      props.onUpdated?.(fullUrl);
     }
   } catch {
     // Keep fallback image if settings request fails.
@@ -288,7 +285,7 @@ async function save() {
 
     const fullUrl = toFullUrl(payload?.data?.imageUrl);
     currentUrl.value = fullUrl;
-    emit("updated", fullUrl);
+    props.onUpdated?.(fullUrl);
     clearSourceUrl();
     closePanel();
   } catch (error) {
@@ -367,13 +364,26 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 
 @media (max-width: 640px) {
   .coverEditor {
-    top: 192px;
+    top: auto;
+    bottom: 92px;
     right: 16px;
   }
 
   .coverEditor__toggle {
     width: 38px;
     height: 38px;
+  }
+
+  .coverEditor__panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: min(340px, calc(100vw - 24px));
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    transform: translate(-50%, -50%);
+    z-index: 50;
   }
 }
 

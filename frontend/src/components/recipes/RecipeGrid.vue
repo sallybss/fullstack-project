@@ -18,6 +18,6 @@
   .grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 520px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: repeat(2, 1fr); }
 }
 </style>

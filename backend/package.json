@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "start-dev": "node ../scripts/check-node-version.cjs 22 && nodemon --no-update-notifier",
     "start-dev:once": "node ../scripts/check-node-version.cjs 22 && ts-node --transpile-only ./src/index.ts",
+    "seed:recipes": "ts-node --transpile-only ./src/scripts/seedRecipes.ts",
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

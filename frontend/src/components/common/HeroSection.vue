@@ -6,7 +6,7 @@
       v-if="settingKey"
       :setting-key="settingKey"
       :initial-image-url="resolvedImageUrl"
-      @updated="resolvedImageUrl = $event"
+      :onUpdated="handleCoverUpdated"
     />
 
     <div class="content">
@@ -34,6 +34,10 @@ const props = defineProps<{
 }>();
 
 const resolvedImageUrl = ref(props.imageUrl || "");
+
+function handleCoverUpdated(imageUrl: string) {
+  resolvedImageUrl.value = imageUrl;
+}
 
 watch(
   () => props.imageUrl,

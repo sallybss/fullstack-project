@@ -2,6 +2,8 @@ import { type NextFunction, type Request, type Response } from "express";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import Joi, { type ValidationResult } from "joi";
+import crypto from "crypto";
+import nodemailer from "nodemailer";
 
 import { userModel } from "../models/userModel";
 import { profileModel } from "../models/profileModel";
@@ -24,6 +26,46 @@ function isDbUnavailableError(error: any): boolean {
 const USERNAME_MAX_LENGTH = 100;
 const EMAIL_MAX_LENGTH = 255;
 const PASSWORD_MAX_LENGTH = 72;
+const PASSWORD_RESET_WINDOW_MS = 1000 * 60 * 30;
+
+let authTransporter: nodemailer.Transporter | null = null;
+
+function getAuthTransporter() {
+  if (!authTransporter) {
+    authTransporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: process.env.CONTACT_EMAIL,
+        pass: process.env.CONTACT_EMAIL_APP_PASSWORD,
+      },
+    });
+  }
+
+  return authTransporter;
+}
+
+function buildResetLink(req: Request, token: string): string {
+  const origin =
+    process.env.FRONTEND_URL ||
+    req.header("origin") ||
+    "http://localhost:5173";
+
+  const safeOrigin = origin.replace(/\/+$/, "");
+  return `${safeOrigin}/reset-password?token=${encodeURIComponent(token)}`;
+}
+
+function hashResetToken(token: string): string {
+  return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 export async function registerUser(req: Request, res: Response) {
   try {
@@ -124,6 +166,134 @@ export async function loginUser(req: Request, res: Response) {
       return res.status(503).json({ error: "Database unavailable. Check DBHOST/Atlas network access." });
     }
     return res.status(500).send("Error logging in user. Error: " + error);
+  }
+}
+
+export async function requestPasswordReset(req: Request, res: Response) {
+  try {
+    const email = String(req.body?.email || "").trim().toLowerCase();
+    let devResetLink = "";
+
+    if (!email || email.length > EMAIL_MAX_LENGTH) {
+      return res.status(400).json({ error: "A valid email is required." });
+    }
+
+    await connect();
+
+    const user = await userModel.findOne({ email }).select("_id username email status");
+    const recipient = process.env.CONTACT_EMAIL;
+    const appPassword = process.env.CONTACT_EMAIL_APP_PASSWORD;
+
+    if (user && user.status === "active" && recipient && appPassword) {
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetTokenHash = hashResetToken(resetToken);
+      const passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_WINDOW_MS);
+
+      await userModel.findByIdAndUpdate(user._id, {
+        $set: {
+          passwordResetTokenHash: resetTokenHash,
+          passwordResetExpiresAt,
+        },
+      });
+
+      const resetLink = buildResetLink(req, resetToken);
+      devResetLink = resetLink;
+
+      await getAuthTransporter().sendMail({
+        from: `"FoodFinder" <${recipient}>`,
+        to: user.email,
+        subject: "Reset your FoodFinder password",
+        text: [
+          `Hi ${user.username},`,
+          "",
+          "We received a request to reset your FoodFinder password.",
+          `Use this link to set a new password: ${resetLink}`,
+          "",
+          "This link will expire in 30 minutes.",
+          "If you did not request this, you can ignore this email.",
+        ].join("\n"),
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #1f1a16; line-height: 1.6;">
+            <h2 style="margin-bottom: 12px;">Reset your FoodFinder password</h2>
+            <p>Hi ${escapeHtml(user.username)},</p>
+            <p>We received a request to reset your password.</p>
+            <p>
+              <a
+                href="${resetLink}"
+                style="display: inline-block; padding: 12px 18px; border-radius: 999px; background: #ff724c; color: #fff; text-decoration: none; font-weight: 700;"
+              >
+                Reset password
+              </a>
+            </p>
+            <p>This link will expire in 30 minutes.</p>
+            <p>If you did not request this, you can safely ignore this email.</p>
+          </div>
+        `,
+      });
+    } else if (user && user.status === "active") {
+      const resetToken = crypto.randomBytes(32).toString("hex");
+      const resetTokenHash = hashResetToken(resetToken);
+      const passwordResetExpiresAt = new Date(Date.now() + PASSWORD_RESET_WINDOW_MS);
+
+      await userModel.findByIdAndUpdate(user._id, {
+        $set: {
+          passwordResetTokenHash: resetTokenHash,
+          passwordResetExpiresAt,
+        },
+      });
+
+      devResetLink = buildResetLink(req, resetToken);
+      console.warn("Password reset email config missing. Using dev reset link fallback.");
+    }
+
+    return res.status(200).json({
+      error: null,
+      data: {
+        success: true,
+        message: "If that email exists, a reset link has been sent.",
+        resetLink: process.env.NODE_ENV === "production" ? undefined : devResetLink || undefined,
+      },
+    });
+  } catch (error: any) {
+    console.error("requestPasswordReset failed:", error);
+    return res.status(500).json({ error: "Failed to send reset email." });
+  }
+}
+
+export async function resetPasswordWithToken(req: Request, res: Response) {
+  try {
+    const token = String(req.body?.token || "").trim();
+    const newPassword = String(req.body?.newPassword || "");
+
+    if (!token) {
+      return res.status(400).json({ error: "Reset token is required." });
+    }
+
+    if (newPassword.length < 6 || newPassword.length > PASSWORD_MAX_LENGTH) {
+      return res.status(400).json({ error: `New password must be 6-${PASSWORD_MAX_LENGTH} characters.` });
+    }
+
+    await connect();
+
+    const user = await userModel.findOne({
+      passwordResetTokenHash: hashResetToken(token),
+      passwordResetExpiresAt: { $gt: new Date() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Reset link is invalid or has expired." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.passwordResetTokenHash = "";
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    return res.status(200).json({ error: null, data: { success: true } });
+  } catch (error: any) {
+    console.error("resetPasswordWithToken failed:", error);
+    return res.status(500).json({ error: "Failed to reset password." });
   }
 }
 
@@ -249,7 +419,16 @@ export async function updateUserStatus(req: Request, res: Response) {
     await connect();
 
     const userId = String(req.params.userId || "");
+    const authUserId = String((req as any).user?.id || "");
     const status = String(req.body?.status || "");
+
+    if (!userId) {
+      return res.status(400).json({ error: "Missing userId" });
+    }
+
+    if (userId === authUserId) {
+      return res.status(400).json({ error: "Admins cannot change their own status from this endpoint." });
+    }
 
     if (!["active", "blocked"].includes(status)) {
       return res.status(400).json({ error: "status must be active or blocked" });

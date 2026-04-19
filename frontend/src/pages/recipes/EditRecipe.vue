@@ -70,7 +70,7 @@ const handleUpdateRecipe = async (payload: RecipeFormValues) => {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" setting-key="edit-recipe-hero" />
+    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" />
 
     <main class="container">
       <p v-if="pageLoading" class="info">Loading recipe...</p>
@@ -86,8 +86,8 @@ const handleUpdateRecipe = async (payload: RecipeFormValues) => {
           :initialValues="initialValues"
           :serverError="error"
           :loading="isSubmitting"
-          @submit="handleUpdateRecipe"
-          @cancel="goBack"
+          :onSubmit="handleUpdateRecipe"
+          :onCancel="goBack"
         />
 
         <p v-if="successMessage" class="success-message">

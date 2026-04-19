@@ -3,53 +3,21 @@
     <div class="auth__overlay"></div>
 
     <div class="auth__panel">
-      <h1 class="auth__title">Sign Up</h1>
-      <p class="auth__subtitle">Create your FoodFinder account.</p>
+      <h1 class="auth__title">Reset Password</h1>
+      <p class="auth__subtitle">Choose a new password for your FoodFinder account.</p>
 
       <form class="auth__form" @submit.prevent="onSubmit">
         <label class="auth__label">
-          <div class="auth__fieldHead">
-            <span>Name</span>
-            <span class="auth__counter">{{ name.length }}/100</span>
-          </div>
-          <input
-            v-model="name"            
-            class="auth__input"
-            type="text"
-            placeholder="Your name"
-            autocomplete="name"
-            maxlength="100"
-            required
-          />
-        </label>
-
-        <label class="auth__label">
-          <div class="auth__fieldHead">
-            <span>Email</span>
-            <span class="auth__counter">{{ email.length }}/255</span>
-          </div>
-          <input
-            v-model="email"
-            class="auth__input"
-            type="email"
-            placeholder="you@email.com"
-            autocomplete="email"
-            maxlength="255"
-            required
-          />
-        </label>
-
-        <label class="auth__label">
-          Password
+          New password
           <input
             v-model="password"
             class="auth__input"
             :type="showPasswords ? 'text' : 'password'"
             placeholder="••••••••"
             autocomplete="new-password"
-            required
             minlength="6"
             maxlength="72"
+            required
           />
         </label>
 
@@ -61,9 +29,9 @@
             :type="showPasswords ? 'text' : 'password'"
             placeholder="••••••••"
             autocomplete="new-password"
-            required
             minlength="6"
             maxlength="72"
+            required
           />
         </label>
 
@@ -80,13 +48,15 @@
           {{ error }}
         </p>
 
-        <BaseButton type="submit" variant="primary">
-          Create account
-        </BaseButton>
+        <p v-if="successMessage" class="auth__message auth__message--success">
+          {{ successMessage }}
+        </p>
+
+        <BaseButton type="submit" variant="primary">Reset password</BaseButton>
 
         <p class="auth__footer">
-          Already have an account?
-          <RouterLink class="auth__link" to="/signin">Sign In</RouterLink>
+          Remembered it?
+          <RouterLink class="auth__link" to="/signin">Back to Sign In</RouterLink>
         </p>
       </form>
     </div>
@@ -94,38 +64,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, ref } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import BaseButton from "../../components/common/BaseButton.vue";
 import bg from "../../assets/images/auth_bg.jpg";
 import { useUser } from "../../modules/auth/useUser";
 
+const route = useRoute();
 const router = useRouter();
-const { registerUser, fetchToken, error, isLoggedIn, name, email, password, resetForm } = useUser();
+const { resetPasswordWithToken, error } = useUser();
 
+const password = ref("");
 const confirmPassword = ref("");
-const localError = ref("");
 const showPasswords = ref(false);
+const localError = ref("");
+const successMessage = ref("");
+
+const token = computed(() => String(route.query.token || ""));
 
 async function onSubmit() {
   localError.value = "";
+  successMessage.value = "";
+
+  if (!token.value) {
+    localError.value = "Reset link is missing or invalid.";
+    return;
+  }
 
   if (password.value !== confirmPassword.value) {
     localError.value = "Passwords do not match.";
     return;
   }
 
-  await registerUser();
+  const success = await resetPasswordWithToken(token.value, password.value);
+  if (!success) return;
 
-  if (!error.value) {
-    await fetchToken();
+  successMessage.value = "Password updated. Redirecting to Sign In...";
+  password.value = "";
+  confirmPassword.value = "";
 
-    if (isLoggedIn.value) {
-      confirmPassword.value = "";
-      resetForm();
-      router.push("/");
-    }
-  }
+  window.setTimeout(() => {
+    router.push("/signin");
+  }, 1200);
 }
 </script>
 
@@ -181,18 +161,6 @@ async function onSubmit() {
   color: var(--text);
 }
 
-.auth__fieldHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.auth__counter {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
-}
-
 .auth__input {
   height: 48px;
   border-radius: 999px;
@@ -211,12 +179,6 @@ async function onSubmit() {
   border-color: rgba(255, 255, 255, 0.5);
 }
 
-.auth__footer {
-  margin: 0;
-  color: #ffffff;
-  font-size: 14px;
-}
-
 .auth__toggle {
   display: inline-flex;
   align-items: center;
@@ -229,6 +191,12 @@ async function onSubmit() {
 .auth__toggle input {
   margin: 0;
   accent-color: #f08b62;
+}
+
+.auth__footer {
+  margin: 0;
+  color: #ffffff;
+  font-size: 14px;
 }
 
 .auth__link {
@@ -251,6 +219,13 @@ async function onSubmit() {
   color: #ffd2c8;
   background: rgba(196, 84, 63, 0.16);
   border-color: rgba(255, 143, 143, 0.24);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.auth__message--success {
+  color: #f6efe7;
+  background: rgba(58, 120, 88, 0.22);
+  border-color: rgba(127, 190, 155, 0.3);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
 }
 </style>

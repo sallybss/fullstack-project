@@ -306,9 +306,9 @@ function goBack(): void {
                   :planner-added="isSelectedRecipeForSlot(recipe._id)"
                   :planner-disabled="isSlotFilled(selectedSlot) && !isSelectedRecipeForSlot(recipe._id)"
                   :planner-label="`Add To ${MEAL_PLAN_SLOT_LABELS[selectedSlot]}`"
-                  @planner-add="assignRecipeToSelectedSlot"
-                  @auth-required="() => {}"
-                  @save-click="() => {}"
+                  :onPlannerAdd="assignRecipeToSelectedSlot"
+                  :onAuthRequired="() => {}"
+                  :onSaveClick="() => {}"
                 />
               </div>
             </div>
@@ -526,9 +526,12 @@ function goBack(): void {
 }
 
 @media (max-width: 900px) {
-  .top-fields,
-  .recipe-grid {
+  .top-fields {
     grid-template-columns: 1fr;
+  }
+
+  .recipe-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .card {

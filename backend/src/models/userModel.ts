@@ -7,6 +7,8 @@ const userSchema = new Schema(
     password: { type: String, required: true },
     bio: { type: String, default: "", maxlength: 300 },
     avatarUrl: { type: String, default: "", maxlength: 500 },
+    passwordResetTokenHash: { type: String, default: "", maxlength: 128 },
+    passwordResetExpiresAt: { type: Date, default: null },
     role: { type: String, enum: ["user", "admin"], default: "user" },
     status: { type: String, enum: ["active", "blocked"], default: "active" },
     favorites: [{ type: Schema.Types.ObjectId, ref: "Recipe", default: [] }],
