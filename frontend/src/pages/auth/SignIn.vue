@@ -8,13 +8,17 @@
 
       <form class="auth__form" @submit.prevent="onSubmit">
         <label class="auth__label">
-          Email
+          <div class="auth__fieldHead">
+            <span>Email</span>
+            <span class="auth__counter">{{ email.length }}/255</span>
+          </div>
           <input
             v-model="email"
             class="auth__input"
             type="email"
             placeholder="you@email.com"
             autocomplete="email"
+            maxlength="255"
             required
           />
         </label>
@@ -24,14 +28,20 @@
           <input
             v-model="password"
             class="auth__input"
-            type="password"
+            :type="showPassword ? 'text' : 'password'"
             placeholder="••••••••"
             autocomplete="current-password"
             required
+            maxlength="72"
           />
         </label>
 
         <div class="auth__row">
+          <label class="auth__toggle">
+            <input v-model="showPassword" type="checkbox" />
+            <span>Show password</span>
+          </label>
+
           <button type="button" class="auth__link" @click="onForgotPassword">
             Forget Password?
           </button>
@@ -53,6 +63,7 @@
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import bg from "../../assets/images/auth_bg.jpg";
 import BaseButton from "../../components/common/BaseButton.vue";
@@ -60,6 +71,7 @@ import { useUser } from "../../modules/auth/useUser";
 
 const router = useRouter();
 const { fetchToken, error, isLoggedIn, email, password, resetForm } = useUser();
+const showPassword = ref(false);
 
 async function onSubmit() {
   await fetchToken();
@@ -127,6 +139,18 @@ function onForgotPassword() {
   color: var(--text);
 }
 
+.auth__fieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth__counter {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
 .auth__input {
   height: 48px;
   border-radius: 999px;
@@ -147,8 +171,24 @@ function onForgotPassword() {
 
 .auth__row {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   margin-top: -8px;
+}
+
+.auth__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.auth__toggle input {
+  margin: 0;
+  accent-color: #f08b62;
 }
 
 .auth__footer {

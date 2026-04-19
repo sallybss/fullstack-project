@@ -9,7 +9,13 @@
 
     <div class="authorRow">
       <div class="author">
-        <Avatar :label="ownerInitial" shape="circle" class="avatar" />
+        <Avatar
+          :label="ownerAvatarSrc ? undefined : ownerInitial"
+          :image="ownerAvatarSrc || undefined"
+          shape="circle"
+          class="avatar"
+        />
+        
 
         <div>
           <div class="authorName">{{ recipe.owner?.username ?? "Unknown" }}</div>
@@ -188,6 +194,14 @@ const ratingCount = computed(() => {
 const ownerInitial = computed(() => {
   const username = props.recipe.owner?.username ?? "U";
   return username.charAt(0).toUpperCase();
+});
+
+const API_URL = import.meta.env.VITE_API_URL;
+
+const ownerAvatarSrc = computed(() => {
+  const avatarUrl = props.recipe.owner?.avatarUrl;
+  if (!avatarUrl) return "";
+  return avatarUrl.startsWith("http") ? avatarUrl : `${API_URL}${avatarUrl}`;
 });
 
 // Opens the profile page of the recipe owner

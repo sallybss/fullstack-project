@@ -72,9 +72,21 @@
             class="box comment-item"
           >
             <div class="comment-top">
-              <div>
-                <strong>{{ comment.username }}</strong>
-                <p class="comment-date">{{ formatDate(comment.createdAt) }}</p>
+              <div class="comment-meta">
+                <div class="comment-avatar">
+                  <img
+                    v-if="commentAvatarSrc(comment.avatarUrl)"
+                    :src="commentAvatarSrc(comment.avatarUrl)"
+                    alt="Comment avatar"
+                    class="comment-avatar__image"
+                  />
+                  <span v-else>{{ commentInitials(comment.username) }}</span>
+                </div>
+
+                <div>
+                  <strong>{{ comment.username }}</strong>
+                  <p class="comment-date">{{ formatDate(comment.createdAt) }}</p>
+                </div>
               </div>
 
               <div v-if="canManageComment(comment.user)" class="comment-tools">
@@ -180,6 +192,17 @@ const selectedRating = ref(0);
 const ratingFeedback = ref("");
 
 const recipeId = computed(() => String(route.params.id));
+const commentAvatarSrc = (avatarUrl?: string) => {
+  if (!avatarUrl) return "";
+  return avatarUrl.startsWith("http") ? avatarUrl : `${API_URL}${avatarUrl}`;
+};
+const commentInitials = (username: string) =>
+  (username || "U")
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
 const recipe = computed(() => recipes.value.find((item) => item._id === recipeId.value));
 
@@ -433,6 +456,32 @@ function formatDate(value?: string) {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.comment-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.comment-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: #f1f1f6;
+  color: #333;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.comment-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .comment-tools {

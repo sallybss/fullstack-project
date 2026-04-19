@@ -2,6 +2,11 @@
   <div class="about-page">
     <section class="about-hero" :style="heroBackgroundStyle">
       <div class="about-hero__overlay"></div>
+      <AdminCoverEditor
+        setting-key="about-hero"
+        :initial-image-url="heroImageUrl"
+        @updated="heroImageUrl = $event"
+      />
       <div class="about-hero__content">
         <h1>Our Story</h1>
         <p>
@@ -111,12 +116,16 @@
 </template>
 
 <script setup lang="ts">
+import { computed, ref } from "vue";
+import AdminCoverEditor from "../components/common/AdminCoverEditor.vue";
 import heroImage from "../assets/images/hero.jpg";
 import kitchenImage from "../assets/images/auth_bg.jpg";
 
-const heroBackgroundStyle = {
-  backgroundImage: `linear-gradient(180deg, rgba(13, 10, 8, 0.28) 0%, rgba(13, 10, 8, 0.62) 100%), url(${heroImage})`,
-};
+const heroImageUrl = ref(heroImage);
+
+const heroBackgroundStyle = computed(() => ({
+  backgroundImage: `linear-gradient(180deg, rgba(13, 10, 8, 0.28) 0%, rgba(13, 10, 8, 0.62) 100%), url(${heroImageUrl.value})`,
+}));
 
 const storyPhotoStyle = {
   backgroundImage: `linear-gradient(180deg, rgba(24, 18, 14, 0.14), rgba(24, 18, 14, 0.18)), url(${kitchenImage})`,

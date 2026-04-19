@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import Home from "../pages/Home.vue";
 import About from "../pages/About.vue";
 import Contact from "../pages/Contact.vue";
+import PrivacyPolicy from "../pages/PrivacyPolicy.vue";
 import SavedRecipes from "../pages/SavedRecipes.vue";
 import MealPlans from "../pages/MealPlans.vue";
 import MealPlanEditor from "../pages/MealPlanEditor.vue";
@@ -17,15 +18,17 @@ import MyProfileAdvance from "../pages/profile/MyProfileAdvance.vue";
 import ProfileView from "../pages/profile/ProfileView.vue";
 
 import AdminPanelView from "../pages/admin/AdminPanelView.vue";
+import { useAuthSession } from "../composables/useAuthSession";
 
 const routes = [
   { path: "/", name: "home", component: Home },
   { path: "/about", name: "about", component: About },
   { path: "/contact", name: "contact", component: Contact },
+  { path: "/privacy-policy", name: "privacy-policy", component: PrivacyPolicy },
   { path: "/saved", name: "saved", component: SavedRecipes, meta: { requiresAuth: true } },
-  { path: "/meal-plans", name: "meal-plans", component: MealPlans },
-  { path: "/meal-plans/create", name: "meal-plans-create", component: MealPlanEditor },
-  { path: "/meal-plans/:id/edit", name: "meal-plans-edit", component: MealPlanEditor },
+  { path: "/meal-plans", name: "meal-plans", component: MealPlans, meta: { requiresAuth: true } },
+  { path: "/meal-plans/create", name: "meal-plans-create", component: MealPlanEditor, meta: { requiresAuth: true } },
+  { path: "/meal-plans/:id/edit", name: "meal-plans-edit", component: MealPlanEditor, meta: { requiresAuth: true } },
 
   { path: "/signin", name: "signin", component: SignIn, meta: { hideLayout: true } },
   { path: "/signup", name: "signup", component: SignUp, meta: { hideLayout: true } },
@@ -38,7 +41,12 @@ const routes = [
 
   { path: "/my-profile", name: "my-profile", component: MyProfileView, alias: "/me", meta: { requiresAuth: true } },
   { path: "/my-profile/advanced", name: "my-profile-advanced", component: MyProfileAdvance, alias: "/me/advanced", meta: { requiresAuth: true } },
-  { path: "/me/admin", name: "admin-panel", component: AdminPanelView, meta: { requiresAuth: true } },
+  {
+    path: "/me/admin",
+    name: "admin-panel",
+    component: AdminPanelView,
+    meta: { requiresAuth: true, requiresAdmin: true },
+  },
 
   { path: "/:pathMatch(.*)*", redirect: { name: "home" } },
 ];
@@ -56,10 +64,15 @@ const router = createRouter({
 });
 
 router.beforeEach((to) => {
-  const loggedIn = Boolean(localStorage.getItem("lsToken"));
+  const { isAuthenticated, userRole, syncAuthSessionFromStorage } = useAuthSession();
+  syncAuthSessionFromStorage();
 
-  if (to.meta.requiresAuth && !loggedIn) {
+  if (to.meta.requiresAuth && !isAuthenticated.value) {
     return { name: "signin" };
+  }
+
+  if (to.meta.requiresAdmin && userRole.value !== "admin") {
+    return { name: "my-profile" };
   }
 
   return true;

@@ -1,16 +1,16 @@
 <template>
   <div class="page">
     <main class="page__main">
-      <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700">
+      <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" setting-key="home-hero">
         <HeroSearch v-model="query" />
       </HeroSection>
 
       <section class="section">
         <div class="section__actions">
           <div class="categoryControls">
-            <label class="categorySelect" for="mobile-category">
+            <label class="categorySelect" for="category-filter">
               <span class="categorySelect__label">Category</span>
-              <select id="mobile-category" v-model="selectedCategory">
+              <select id="category-filter" v-model="selectedCategory">
                 <option
                   v-for="chip in categoryChips"
                   :key="chip"
@@ -20,19 +20,6 @@
                 </option>
               </select>
             </label>
-
-            <div class="chips">
-              <button
-                v-for="chip in categoryChips"
-                :key="chip"
-                type="button"
-                class="chip"
-                :class="{ 'chip--active': selectedCategory === chip }"
-                @click="selectedCategory = chip"
-              >
-                {{ chip }}
-              </button>
-            </div>
           </div>
 
           <BaseButton
@@ -40,7 +27,7 @@
             type="button"
             @click="handleAddRecipeClick"
           >
-            Add Recipe
+            + Add Recipe
           </BaseButton>
         </div>
 
@@ -219,11 +206,12 @@ function goToSignUp() {
 }
 
 .categoryControls {
-  flex: 1 1 720px;
+  flex: 0 0 auto;
 }
 
 .categorySelect {
-  display: none;
+  display: block;
+  width: fit-content;
 }
 
 .categorySelect__label {
@@ -235,49 +223,22 @@ function goToSignUp() {
 }
 
 .categorySelect select {
-  width: 100%;
+  width: 180px;
   height: 46px;
   border: 1px solid #e4e4e7;
   border-radius: 14px;
   background: #fff;
   color: #444;
-  padding: 0 16px;
+  padding: 0 52px 0 16px;
   font: inherit;
+  background-position: right 22px center;
 }
 
-.chips {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.chip {
-  height: 38px;
-  padding: 0 16px;
-  border-radius: 999px;
-  border: 1px solid #e4e4e7;
-  background: white;
-  color: #444;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: 0.2s ease;
-}
-
-.chip:hover {
-  border-color: #ff724c;
-  color: #ff724c;
-}
-
-.chip--active {
-  background: #ff724c;
-  border-color: #ff724c;
-  color: white;
-}
-
-.chip--active:hover {
-  color: white;
+.categorySelect select:focus,
+.categorySelect select:focus-visible {
+  outline: none;
+  border-color: #f08b62;
+  box-shadow: 0 0 0 3px rgba(240, 139, 98, 0.16);
 }
 
 @media (max-width: 700px) {
@@ -290,11 +251,11 @@ function goToSignUp() {
   }
 
   .categorySelect {
-    display: block;
+    width: 100%;
   }
 
-  .chips {
-    display: none;
+  .categorySelect select {
+    width: 100%;
   }
 
   .section :deep(.btn) {

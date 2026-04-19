@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
+import { usePagination } from "../../composables/usePagination";
 
 import { useUser } from "../../modules/auth/useUser";
 import { useRecipes } from "../../modules/useRecipes";
@@ -22,7 +23,6 @@ const {
 const { recipes, fetchRecipes } = useRecipes();
 
 const search = ref("");
-const page = ref(1);
 const pageSize = 5;
 const loading = ref(true);
 const error = ref("");
@@ -42,11 +42,8 @@ const filteredUsers = computed(() => {
 const totalUsers = computed(() => users.value.length);
 const activeUsers = computed(() => users.value.filter((entry) => entry.status === "active").length);
 const blockedUsers = computed(() => users.value.filter((entry) => entry.status === "blocked").length);
-
-const pagedUsers = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return filteredUsers.value.slice(start, start + pageSize);
-});
+const isAdmin = computed(() => user.value?.role === "admin");
+const { page, totalItems: filteredUserCount, pagedItems: pagedUsers, resetPage } = usePagination(filteredUsers, pageSize);
 
 function recipeCountForUser(userId: string) {
   return recipes.value.filter((recipe) => recipe.owner?._id === userId).length;
@@ -69,12 +66,29 @@ function initialsForUser(entry: User) {
     .toUpperCase();
 }
 
+function avatarSrc(entry: User) {
+  if (!entry.avatarUrl) return "";
+  return entry.avatarUrl.startsWith("http")
+    ? entry.avatarUrl
+    : `${import.meta.env.VITE_API_URL}${entry.avatarUrl}`;
+}
+
+watch(search, () => {
+  resetPage();
+});
+
 onMounted(async () => {
   try {
     loading.value = true;
     error.value = "";
 
     await Promise.all([fetchCurrentUser(), fetchRecipes()]);
+
+    if (user.value?.role !== "admin") {
+      router.replace({ name: "my-profile" });
+      return;
+    }
+
     users.value = await fetchUsers();
   } catch (err) {
     error.value = (err as Error).message || "Failed to load admin data";
@@ -87,9 +101,14 @@ async function toggleBlock(id: string) {
   const entry = users.value.find((item) => item._id === id);
   if (!entry) return;
 
-  const nextStatus = entry.status === "blocked" ? "active" : "blocked";
-  const updated = await updateManagedUserStatus(id, nextStatus);
-  users.value = users.value.map((item) => (item._id === id ? updated : item));
+  try {
+    error.value = "";
+    const nextStatus = entry.status === "blocked" ? "active" : "blocked";
+    const updated = await updateManagedUserStatus(id, nextStatus);
+    users.value = users.value.map((item) => (item._id === id ? updated : item));
+  } catch (err) {
+    error.value = (err as Error).message || "Failed to update user status";
+  }
 }
 
 async function deleteUser(id: string) {
@@ -106,14 +125,14 @@ function viewPosts(id: string) {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/adminhero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/adminhero/1400/700" setting-key="admin-panel-hero" />
 
     <main class="container">
       <div class="card">
         <div class="top">
           <ProfileTabsBar
             active-tab="admin"
-            :show-admin="true"
+            :show-admin="isAdmin"
             back-fallback-name="my-profile"
           />
 
@@ -180,7 +199,15 @@ function viewPosts(id: string) {
               <tr v-for="entry in pagedUsers" :key="entry._id">
                 <td>
                   <div class="userCell">
-                    <div class="avatar">{{ initialsForUser(entry) }}</div>
+                    <div class="avatar">
+                      <img
+                        v-if="avatarSrc(entry)"
+                        :src="avatarSrc(entry)"
+                        alt="User avatar"
+                        class="avatarImage"
+                      />
+                      <span v-else>{{ initialsForUser(entry) }}</span>
+                    </div>
                     <div>
                       <div class="userName">{{ entry.username }}</div>
                       <div class="userEmail">{{ entry.email }}</div>
@@ -233,11 +260,11 @@ function viewPosts(id: string) {
             </tbody>
           </table>
 
-          <div class="pager" v-if="filteredUsers.length > pageSize">
+          <div class="pager" v-if="filteredUserCount > pageSize">
             <PaginationBar
               v-model:page="page"
               :pageSize="pageSize"
-              :total="filteredUsers.length"
+              :total="filteredUserCount"
             />
           </div>
         </div>
@@ -393,6 +420,14 @@ function viewPosts(id: string) {
   background: #f1f1f6;
   color: #333;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .userName {

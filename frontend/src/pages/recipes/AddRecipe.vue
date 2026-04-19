@@ -36,7 +36,7 @@ const handleAddRecipe = async (payload: RecipeFormValues) => {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" setting-key="add-recipe-hero" />
 
     <main class="container">
       <RecipeForm

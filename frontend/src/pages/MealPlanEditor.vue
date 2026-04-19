@@ -21,6 +21,8 @@ import {
 
 const route = useRoute();
 const router = useRouter();
+const MEAL_PLAN_NAME_LIMIT = 80;
+const RECIPE_SEARCH_LIMIT = 100;
 
 const { recipes, fetchRecipes, error: recipesError } = useRecipes();
 const {
@@ -223,6 +225,7 @@ function goBack(): void {
   <div class="page">
     <HeroSection
       imageUrl="https://picsum.photos/seed/mealplanner/1400/700"
+      setting-key="meal-plan-editor-hero"
       :title="isEditing ? 'Edit Meal Plan' : 'Weekly Meal Planner'"
       subtitle="Pick a day, pick a meal, pick a recipe."
     />
@@ -242,7 +245,9 @@ function goBack(): void {
                 v-model="form.name"
                 type="text"
                 placeholder="Week name"
+                :maxlength="MEAL_PLAN_NAME_LIMIT"
               />
+              <span class="field__counter">{{ form.name.length }}/{{ MEAL_PLAN_NAME_LIMIT }}</span>
             </label>
           </div>
 
@@ -284,6 +289,7 @@ function goBack(): void {
                   v-model="recipeSearch"
                   type="text"
                   placeholder="Search by recipe title"
+                  :maxlength="RECIPE_SEARCH_LIMIT"
                 />
               </label>
 
@@ -374,6 +380,12 @@ function goBack(): void {
   color: #6f645a;
   font-size: 14px;
   font-weight: 700;
+}
+
+.field__counter {
+  color: #a79b92;
+  font-size: 12px;
+  justify-self: end;
 }
 
 .field input,

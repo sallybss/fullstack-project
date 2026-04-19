@@ -8,25 +8,33 @@
 
       <form class="auth__form" @submit.prevent="onSubmit">
         <label class="auth__label">
-          Name
+          <div class="auth__fieldHead">
+            <span>Name</span>
+            <span class="auth__counter">{{ name.length }}/100</span>
+          </div>
           <input
             v-model="name"            
             class="auth__input"
             type="text"
             placeholder="Your name"
             autocomplete="name"
+            maxlength="100"
             required
           />
         </label>
 
         <label class="auth__label">
-          Email
+          <div class="auth__fieldHead">
+            <span>Email</span>
+            <span class="auth__counter">{{ email.length }}/255</span>
+          </div>
           <input
             v-model="email"
             class="auth__input"
             type="email"
             placeholder="you@email.com"
             autocomplete="email"
+            maxlength="255"
             required
           />
         </label>
@@ -36,11 +44,12 @@
           <input
             v-model="password"
             class="auth__input"
-            type="password"
+            :type="showPasswords ? 'text' : 'password'"
             placeholder="••••••••"
             autocomplete="new-password"
             required
             minlength="6"
+            maxlength="72"
           />
         </label>
 
@@ -49,12 +58,18 @@
           <input
             v-model="confirmPassword"
             class="auth__input"
-            type="password"
+            :type="showPasswords ? 'text' : 'password'"
             placeholder="••••••••"
             autocomplete="new-password"
             required
             minlength="6"
+            maxlength="72"
           />
+        </label>
+
+        <label class="auth__toggle">
+          <input v-model="showPasswords" type="checkbox" />
+          <span>Show password</span>
         </label>
 
         <p v-if="localError" class="auth__message auth__message--error">
@@ -90,6 +105,7 @@ const { registerUser, fetchToken, error, isLoggedIn, name, email, password, rese
 
 const confirmPassword = ref("");
 const localError = ref("");
+const showPasswords = ref(false);
 
 async function onSubmit() {
   localError.value = "";
@@ -165,6 +181,18 @@ async function onSubmit() {
   color: var(--text);
 }
 
+.auth__fieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth__counter {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+}
+
 .auth__input {
   height: 48px;
   border-radius: 999px;
@@ -187,6 +215,20 @@ async function onSubmit() {
   margin: 0;
   color: #ffffff;
   font-size: 14px;
+}
+
+.auth__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.auth__toggle input {
+  margin: 0;
+  accent-color: #f08b62;
 }
 
 .auth__link {

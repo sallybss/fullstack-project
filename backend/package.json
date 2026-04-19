@@ -6,8 +6,8 @@
   "scripts": {
     "build": "rm -rf ./dist.tmp && tsc --outDir ./dist.tmp && rm -rf ./dist && mv ./dist.tmp ./dist",
     "start": "node dist/index.js",
-    "start-dev": "nodemon --no-update-notifier",
-    "start-dev:once": "ts-node --transpile-only ./src/index.ts",
+    "start-dev": "node ../scripts/check-node-version.cjs 22 && nodemon --no-update-notifier",
+    "start-dev:once": "node ../scripts/check-node-version.cjs 22 && ts-node --transpile-only ./src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -46,6 +46,7 @@
   },
   "homepage": "https://github.com/sallybss/fullstack-project#readme",
   "dependencies": {
+    "@types/nodemailer": "^8.0.0",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.6",
     "cross-env": "^10.1.0",
@@ -56,6 +57,7 @@
     "mongodb": "^7.1.0",
     "mongoose": "^9.2.3",
     "multer": "^2.1.1",
+    "nodemailer": "^8.0.5",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },

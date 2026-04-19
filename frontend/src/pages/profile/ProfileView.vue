@@ -1,6 +1,6 @@
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/profilehero/1400/700" />
+    <HeroSection imageUrl="https://picsum.photos/seed/profilehero/1400/700" setting-key="profile-hero" />
 
     <main class="container">
       <div class="profile-card">
@@ -18,7 +18,10 @@
         <template v-else>
           <div class="profile-top">
             <div class="left">
-              <div class="avatar">{{ ownerInitial }}</div>
+              <div class="avatar">
+                <img v-if="avatarSrc" :src="avatarSrc" alt="Profile avatar" class="avatarImage" />
+                <span v-else>{{ ownerInitial }}</span>
+              </div>
 
               <div class="meta">
                 <h1 class="name">{{ profileData?.username || "Unknown" }}</h1>
@@ -84,12 +87,18 @@
               </button>
             </div>
 
-            <div v-if="activeSection === 'posts' && pagedRecipes.length === 0" class="empty-state">
+            <div
+              v-if="activeSection === 'posts' && pagedRecipes.length === 0"
+              class="empty-state"
+            >
               <h2>No recipes yet</h2>
               <p>This user has not published any recipes yet.</p>
             </div>
 
-            <div v-else-if="activeSection === 'saved' && pagedSavedRecipes.length === 0" class="empty-state">
+            <div
+              v-else-if="activeSection === 'saved' && pagedSavedRecipes.length === 0"
+              class="empty-state"
+            >
               <h2>No saved recipes yet</h2>
               <p>This user has not saved any recipes yet.</p>
             </div>
@@ -99,14 +108,16 @@
                 v-for="r in activeSection === 'posts' ? pagedRecipes : pagedSavedRecipes"
                 :key="r._id"
                 :recipe="r"
+                :show-delete="canAdminDeleteRecipes"
                 @auth-required="goToSignIn"
                 @save-click="handleToggleSave"
+                @delete="handleAdminDeleteRecipe"
               />
             </div>
 
             <div class="pager" v-if="activeTotal > pageSize">
               <PaginationBar
-                v-model:page="page"
+                v-model:page="activePage"
                 :pageSize="pageSize"
                 :total="activeTotal"
               />
@@ -158,6 +169,7 @@ import HeroSection from "../../components/common/HeroSection.vue";
 import RecipeCard from "../../components/recipes/RecipeCard.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
+import { usePagination } from "../../composables/usePagination";
 
 import type { Profile } from "../../interfaces/user";
 import type { Recipe } from "../../interfaces/recipe";
@@ -168,8 +180,8 @@ const route = useRoute();
 const router = useRouter();
 const API_URL = import.meta.env.VITE_API_URL;
 
-const { recipes, fetchRecipes, toggleSave } = useRecipes();
-const { isLoggedIn, profile, fetchCurrentUser } = useUser();
+const { recipes, fetchRecipes, toggleSave, deleteRecipe } = useRecipes();
+const { isLoggedIn, profile, user, fetchCurrentUser } = useUser();
 
 const loadingProfile = ref(true);
 const pageError = ref("");
@@ -183,21 +195,42 @@ const peopleModal = ref<"followers" | "following" | null>(null);
 
 const profileId = computed(() => String(route.params.id || ""));
 const pageSize = 8;
-const page = ref(1);
+const {
+  page: postsPage,
+  totalItems: totalPosts,
+  pagedItems: pagedRecipes,
+  syncPageWithinBounds: syncPostsPageWithinBounds,
+} = usePagination(userRecipes, pageSize);
+const {
+  page: savedPage,
+  totalItems: totalSavedRecipes,
+  pagedItems: pagedSavedRecipes,
+} = usePagination(savedRecipes, pageSize);
+const activePage = computed({
+  get: () =>
+    activeSection.value === "posts"
+      ? postsPage.value
+      : savedPage.value,
+  set: (value: number) => {
+    if (activeSection.value === "posts") {
+      postsPage.value = value;
+      return;
+    }
 
-const pagedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return userRecipes.value.slice(start, start + pageSize);
-});
-
-const pagedSavedRecipes = computed(() => {
-  const start = (page.value - 1) * pageSize;
-  return savedRecipes.value.slice(start, start + pageSize);
+    savedPage.value = value;
+  },
 });
 
 const activeTotal = computed(() =>
-  activeSection.value === "posts" ? userRecipes.value.length : savedRecipes.value.length,
+  activeSection.value === "posts"
+    ? totalPosts.value
+    : totalSavedRecipes.value,
 );
+const avatarSrc = computed(() => {
+  const value = profileData.value?.avatarUrl || "";
+  if (!value) return "";
+  return value.startsWith("http") ? value : `${API_URL}${value}`;
+});
 
 const ownerInitial = computed(() => {
   const username = profileData.value?.username ?? "U";
@@ -216,6 +249,15 @@ const canFollow = computed(() => {
 const isFollowing = computed(() => {
   if (!profile.value || !profileData.value) return false;
   return profile.value.following.includes(profileData.value.user);
+});
+
+const canAdminDeleteRecipes = computed(() => {
+  return Boolean(
+    user.value?.role === "admin" &&
+      profileData.value &&
+      user.value._id !== profileData.value.user &&
+      activeSection.value === "posts",
+  );
 });
 
 onMounted(async () => {
@@ -337,6 +379,15 @@ async function handleToggleSave(recipeId: string) {
     )
     .filter((recipe) => recipe.saved);
 }
+
+async function handleAdminDeleteRecipe(recipeId: string) {
+  if (!canAdminDeleteRecipes.value) return;
+  if (!window.confirm("Delete this recipe as admin?")) return;
+
+  await deleteRecipe(recipeId);
+  userRecipes.value = userRecipes.value.filter((recipe) => recipe._id !== recipeId);
+  syncPostsPageWithinBounds();
+}
 </script>
 
 <style scoped>
@@ -391,6 +442,14 @@ async function handleToggleSave(recipeId: string) {
   place-items: center;
   font-weight: 800;
   color: #333;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .meta {
@@ -414,8 +473,9 @@ async function handleToggleSave(recipeId: string) {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .stat {
@@ -427,6 +487,7 @@ async function handleToggleSave(recipeId: string) {
   background: #f6f6fb;
   color: #333;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .stat--button {
@@ -540,10 +601,16 @@ async function handleToggleSave(recipeId: string) {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .profile-top {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .right {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .grid {

@@ -1,6 +1,13 @@
 <template>
-  <section class="hero" :style="{ backgroundImage: imageUrl ? `url(${imageUrl})` : 'none' }">
+  <section class="hero" :style="{ backgroundImage: resolvedImageUrl ? `url(${resolvedImageUrl})` : 'none' }">
     <div class="overlay"></div>
+
+    <AdminCoverEditor
+      v-if="settingKey"
+      :setting-key="settingKey"
+      :initial-image-url="resolvedImageUrl"
+      @updated="resolvedImageUrl = $event"
+    />
 
     <div class="content">
       <!-- If user provides slot, show it -->
@@ -16,11 +23,26 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { ref, watch } from "vue";
+import AdminCoverEditor from "./AdminCoverEditor.vue";
+
+const props = defineProps<{
   imageUrl?: string;
   title?: string;
   subtitle?: string;
+  settingKey?: string;
 }>();
+
+const resolvedImageUrl = ref(props.imageUrl || "");
+
+watch(
+  () => props.imageUrl,
+  (nextValue) => {
+    if (nextValue) {
+      resolvedImageUrl.value = nextValue;
+    }
+  },
+);
 </script>
 
 <style scoped>

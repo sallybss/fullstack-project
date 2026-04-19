@@ -14,8 +14,10 @@ export async function connect() {
   }
 
   connectPromise = mongoose.connect(uri, {
+    family: 4,
     serverSelectionTimeoutMS: 5000,
     connectTimeoutMS: 5000,
+    socketTimeoutMS: 5000,
   });
 
   try {

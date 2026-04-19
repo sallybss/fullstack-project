@@ -22,7 +22,10 @@ app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 const allowedOrigins = new Set<string>([
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://127.0.0.1:5173",
+  "http://127.0.0.1:5174",
   "http://localhost:4000",
+  "http://127.0.0.1:4000",
   // Add Render frontend later:
   // "https://your-frontend.onrender.com",
 ]);
@@ -34,7 +37,7 @@ app.use(
       if (allowedOrigins.has(origin)) return callback(null, true);
       return callback(new Error(`CORS blocked for origin: ${origin}`));
     },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "auth-token", "Authorization"],
     credentials: true,
   })
@@ -48,11 +51,14 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   }
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({ error: "photo file is too large (max 5MB)" });
+      return res.status(400).json({ error: "image file is too large (max 8MB)" });
     }
     return res.status(400).json({ error: err.message });
   }
   if (typeof err?.message === "string" && err.message.includes("photo must be a JPG or PNG image")) {
+    return res.status(400).json({ error: err.message });
+  }
+  if (typeof err?.message === "string" && err.message.includes("Avatar image must be")) {
     return res.status(400).json({ error: err.message });
   }
   if (err) {

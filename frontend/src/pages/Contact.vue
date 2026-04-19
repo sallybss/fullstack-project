@@ -2,6 +2,11 @@
   <div class="contact-page">
     <section class="contact-hero" :style="heroBackgroundStyle">
       <div class="contact-hero__overlay"></div>
+      <AdminCoverEditor
+        setting-key="contact-hero"
+        :initial-image-url="heroImageUrl"
+        @updated="updateHeroImage($event)"
+      />
       <div class="contact-hero__content">
         <p class="contact-hero__eyebrow">Ask us</p>
         <h1>Ask Us</h1>
@@ -14,29 +19,14 @@
 
     <main class="contact-main">
       <section class="contact-cards" aria-label="Contact details">
-        <article class="contact-card">
-          <div class="contact-card__icon">
-            <i class="pi pi-envelope"></i>
-          </div>
-          <h2>Email us</h2>
-          <p>hello@foodfinder.com</p>
-        </article>
-
-        <article class="contact-card">
-          <div class="contact-card__icon">
-            <i class="pi pi-map-marker"></i>
-          </div>
-          <h2>Based in</h2>
-          <p>San Francisco, CA</p>
-        </article>
-
-        <article class="contact-card">
-          <div class="contact-card__icon">
-            <i class="pi pi-clock"></i>
-          </div>
-          <h2>Response time</h2>
-          <p>Within 24 hours</p>
-        </article>
+        <ContactInfoCard
+          v-for="card in contactCards"
+          :key="card.title"
+          :icon="card.icon"
+          :title="card.title"
+          :text="card.text"
+          :href="card.href"
+        />
       </section>
 
       <section class="contact-content">
@@ -48,6 +38,7 @@
             <input
               v-model="form.name"
               type="text"
+              maxlength="100"
               placeholder="Your name"
               autocomplete="name"
               required
@@ -56,6 +47,7 @@
             <input
               v-model="form.email"
               type="email"
+              maxlength="255"
               placeholder="Your email"
               autocomplete="email"
               required
@@ -64,6 +56,7 @@
             <input
               v-model="form.subject"
               type="text"
+              maxlength="150"
               placeholder="Subject"
               required
             />
@@ -71,17 +64,26 @@
             <textarea
               v-model="form.message"
               rows="6"
+              :maxlength="MAX_MESSAGE_LENGTH"
               placeholder="Your message"
               required
             ></textarea>
 
-            <p v-if="submitted" class="contact-form__success">
-              Your message is ready to send.
+            <p class="contact-form__counter">
+              ({{ form.message.length }}/{{ MAX_MESSAGE_LENGTH }})
             </p>
 
-            <button class="contact-form__button" type="submit">
+            <p v-if="submitSuccess" class="contact-form__success">
+              Your message has been sent successfully.
+            </p>
+
+            <p v-if="submitError" class="contact-form__error">
+              {{ submitError }}
+            </p>
+
+            <button class="contact-form__button" type="submit" :disabled="isSubmitting">
               <i class="pi pi-send"></i>
-              Send Message
+              {{ isSubmitting ? "Sending..." : "Send Message" }}
             </button>
           </form>
         </section>
@@ -130,11 +132,36 @@
 
 <script setup lang="ts">
 import { reactive, ref } from "vue";
+import AdminCoverEditor from "../components/common/AdminCoverEditor.vue";
+import ContactInfoCard from "../components/contact/ContactInfoCard.vue";
 import heroImage from "../assets/images/hero.jpg";
+import { useEditableHero } from "../composables/useEditableHero";
 
-const heroBackgroundStyle = {
-  backgroundImage: `linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%), url(${heroImage})`,
-};
+const MAX_MESSAGE_LENGTH = 1000;
+
+const { heroImageUrl, heroBackgroundStyle, updateHeroImage } = useEditableHero(
+  heroImage,
+  "linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%)",
+);
+
+const contactCards = [
+  {
+    icon: "pi-envelope",
+    title: "Email us",
+    text: "foodfindersupport@gmail.com",
+    href: "mailto:foodfindersupport@gmail.com",
+  },
+  {
+    icon: "pi-map-marker",
+    title: "Based in",
+    text: "San Francisco, CA",
+  },
+  {
+    icon: "pi-clock",
+    title: "Response time",
+    text: "Within 24 hours",
+  },
+];
 
 const form = reactive({
   name: "",
@@ -143,10 +170,41 @@ const form = reactive({
   message: "",
 });
 
-const submitted = ref(false);
+const API_URL = import.meta.env.VITE_API_URL;
+const isSubmitting = ref(false);
+const submitSuccess = ref(false);
+const submitError = ref("");
 
-function handleSubmit() {
-  submitted.value = true;
+async function handleSubmit() {
+  try {
+    isSubmitting.value = true;
+    submitSuccess.value = false;
+    submitError.value = "";
+
+    const response = await fetch(`${API_URL}/api/contact`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(form),
+    });
+
+    const payload = await response.json().catch(() => null);
+
+    if (!response.ok) {
+      throw new Error(payload?.error || "Failed to send message.");
+    }
+
+    submitSuccess.value = true;
+    form.name = "";
+    form.email = "";
+    form.subject = "";
+    form.message = "";
+  } catch (error) {
+    submitError.value = (error as Error).message || "Failed to send message.";
+  } finally {
+    isSubmitting.value = false;
+  }
 }
 </script>
 
@@ -225,46 +283,17 @@ function handleSubmit() {
   align-items: start;
 }
 
-.contact-card,
 .faq-card {
   border-radius: 14px;
   background: #fff;
   box-shadow: 0 12px 28px rgba(34, 26, 20, 0.08);
 }
 
-.contact-card {
-  padding: 26px 24px;
-  text-align: center;
-}
-
-.contact-card__icon {
-  width: 40px;
-  height: 40px;
-  margin: 0 auto 14px;
-  border-radius: 999px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 114, 76, 0.1);
-  color: #ef8358;
-  font-size: 1rem;
-}
-
-.contact-card h2,
 .message-panel h2,
 .faq-panel h2 {
   margin: 0;
   color: #332d28;
   letter-spacing: 0;
-}
-
-.contact-card h2 {
-  font-size: 1rem;
-}
-
-.contact-card p {
-  margin: 8px 0 0;
-  color: #9a8f85;
-  font-size: 0.92rem;
 }
 
 .contact-content {
@@ -325,6 +354,18 @@ function handleSubmit() {
   color: #7f6d60;
 }
 
+.contact-form__counter {
+  margin: -4px 2px 0;
+  color: #9d9288;
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.contact-form__error {
+  margin: 0;
+  color: #c2543f;
+}
+
 .contact-form__button {
   display: inline-flex;
   align-items: center;
@@ -341,6 +382,11 @@ function handleSubmit() {
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 12px 24px rgba(164, 92, 57, 0.16);
+}
+
+.contact-form__button:disabled {
+  cursor: wait;
+  opacity: 0.84;
 }
 
 .faq-panel {
@@ -392,8 +438,5 @@ function handleSubmit() {
     padding: 104px 18px 92px;
   }
 
-  .contact-card {
-    padding: 22px 18px;
-  }
 }
 </style>
