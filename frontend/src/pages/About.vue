@@ -5,7 +5,7 @@
       <AdminCoverEditor
         setting-key="about-hero"
         :initial-image-url="heroImageUrl"
-        @updated="heroImageUrl = $event"
+        :onUpdated="updateHeroImage"
       />
       <div class="about-hero__content">
         <h1>Our Story</h1>
@@ -122,6 +122,10 @@ import heroImage from "../assets/images/hero.jpg";
 import kitchenImage from "../assets/images/auth_bg.jpg";
 
 const heroImageUrl = ref(heroImage);
+
+function updateHeroImage(imageUrl: string) {
+  heroImageUrl.value = imageUrl;
+}
 
 const heroBackgroundStyle = computed(() => ({
   backgroundImage: `linear-gradient(180deg, rgba(13, 10, 8, 0.28) 0%, rgba(13, 10, 8, 0.62) 100%), url(${heroImageUrl.value})`,

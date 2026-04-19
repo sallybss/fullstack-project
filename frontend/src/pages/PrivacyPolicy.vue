@@ -5,7 +5,7 @@
       <AdminCoverEditor
         setting-key="privacy-policy-hero"
         :initial-image-url="heroImageUrl"
-        @updated="updateHeroImage($event)"
+        :onUpdated="updateHeroImage"
       />
       <div class="privacy-hero__content">
         <p class="privacy-hero__eyebrow">Privacy Policy</p>

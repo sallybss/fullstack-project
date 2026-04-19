@@ -107,15 +107,6 @@ function goToCreatePage(): void {
   router.push({ name: "meal-plans-create" });
 }
 
-function goBack(): void {
-  if (window.history.length > 1) {
-    router.back();
-    return;
-  }
-
-  router.push({ name: "home" });
-}
-
 function goToEditPage(mealPlanId: string): void {
   router.push({ name: "meal-plans-edit", params: { id: mealPlanId } });
 }
@@ -157,11 +148,6 @@ async function handleDeleteMealPlan(mealPlan: MealPlan): Promise<void> {
 
     <main class="container">
       <section class="content-card">
-        <button type="button" class="back-link" @click="goBack">
-          <i class="pi pi-arrow-left"></i>
-          <span>Go back</span>
-        </button>
-
         <div class="page-head">
           <div>
             <p class="eyebrow">Your Saved Plans</p>
@@ -515,6 +501,7 @@ async function handleDeleteMealPlan(mealPlan: MealPlan): Promise<void> {
 @media (max-width: 720px) {
   .container {
     margin-top: -110px;
+    width: min(1200px, calc(100vw - 16px));
   }
 
   .page-head {
@@ -536,6 +523,17 @@ async function handleDeleteMealPlan(mealPlan: MealPlan): Promise<void> {
     padding-right: 18px;
   }
 
+  .plan-summary {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .plan-summary__actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
   .recipe-row {
     grid-template-columns: 1fr;
     gap: 8px;
@@ -543,6 +541,78 @@ async function handleDeleteMealPlan(mealPlan: MealPlan): Promise<void> {
 
   .recipe-row__action {
     justify-self: start;
+  }
+}
+
+@media (max-width: 520px) {
+  .container {
+    margin-top: -124px;
+    width: min(1200px, calc(100vw - 12px));
+  }
+
+  .content-card {
+    border-radius: 24px;
+    padding: 18px 14px 20px;
+  }
+
+  .page-head {
+    margin-bottom: 18px;
+    gap: 16px;
+  }
+
+  .page-head h2 {
+    font-size: 2rem;
+    line-height: 1.15;
+  }
+
+  .plan-grid {
+    gap: 14px;
+  }
+
+  .plan-card {
+    border-radius: 22px;
+    overflow: hidden;
+  }
+
+  .plan-summary,
+  .plan-card__body {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .plan-summary {
+    gap: 14px;
+    padding-top: 18px;
+    padding-bottom: 18px;
+  }
+
+  .plan-summary__content {
+    width: 100%;
+  }
+
+  .plan-summary__actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) 40px;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .plan-summary__edit,
+  .plan-summary__delete {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .plan-summary__icon {
+    width: 40px;
+    height: 40px;
+    justify-self: end;
+  }
+
+  :deep(.hero .coverEditor) {
+    top: 88px;
+    bottom: auto;
+    right: 14px;
   }
 }
 </style>

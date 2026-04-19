@@ -31,17 +31,14 @@ const props = withDefaults(
     initialValues?: Partial<RecipeFormValues>;
     serverError?: string | null;
     loading?: boolean;
+    onSubmit?: (payload: RecipeFormValues) => void | Promise<void>;
+    onCancel?: () => void;
   }>(),
   {
     serverError: null,
     loading: false,
   },
 );
-
-const emit = defineEmits<{
-  (e: "submit", payload: RecipeFormValues): void;
-  (e: "cancel"): void;
-}>();
 
 const title = ref("");
 const description = ref("");
@@ -252,7 +249,7 @@ function handleSubmit() {
     return;
   }
 
-  emit("submit", {
+  props.onSubmit?.({
     title: title.value.trim(),
     description: description.value.trim(),
     ingredients: finalIngredients,
@@ -270,7 +267,7 @@ function handleSubmit() {
 
 <template>
   <div class="card">
-    <button class="back" type="button" @click="$emit('cancel')">
+    <button class="back" type="button" @click="props.onCancel?.()">
       ← Go back
     </button>
 
@@ -467,7 +464,7 @@ function handleSubmit() {
     </p>
 
     <div class="actions">
-      <BaseButton variant="outline" type="button" @click="$emit('cancel')">
+      <BaseButton variant="outline" type="button" @click="props.onCancel?.()">
         Cancel
       </BaseButton>
 
@@ -489,8 +486,8 @@ function handleSubmit() {
       :aspect-ratio="1"
       :output-width="1200"
       :output-height="1200"
-      @close="closeCropper"
-      @apply="applyCroppedImage"
+      :onClose="closeCropper"
+      :onApply="applyCroppedImage"
     />
   </div>
 </template>

@@ -36,7 +36,7 @@ const handleAddRecipe = async (payload: RecipeFormValues) => {
 
 <template>
   <div class="page">
-    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" setting-key="add-recipe-hero" />
+    <HeroSection imageUrl="https://picsum.photos/seed/homehero/1400/700" />
 
     <main class="container">
       <RecipeForm
@@ -44,8 +44,8 @@ const handleAddRecipe = async (payload: RecipeFormValues) => {
         submitLabel="Post"
         :serverError="error"
         :loading="isSubmitting"
-        @submit="handleAddRecipe"
-        @cancel="goBack"
+        :onSubmit="handleAddRecipe"
+        :onCancel="goBack"
       />
 
       <p v-if="successMessage" class="success-message">

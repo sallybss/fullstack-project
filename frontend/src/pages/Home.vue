@@ -8,18 +8,8 @@
       <section class="section">
         <div class="section__actions">
           <div class="categoryControls">
-            <label class="categorySelect" for="category-filter">
-              <span class="categorySelect__label">Category</span>
-              <select id="category-filter" v-model="selectedCategory">
-                <option
-                  v-for="chip in categoryChips"
-                  :key="chip"
-                  :value="chip"
-                >
-                  {{ chip }}
-                </option>
-              </select>
-            </label>
+            <span class="categoryControls__label">Category</span>
+            <CategoryChips v-model="selectedCategory" :items="categoryChips" />
           </div>
 
           <BaseButton
@@ -47,13 +37,20 @@
 
         <RecipeGrid v-else>
           <RecipeCard
-            v-for="recipe in filteredRecipes"
+            v-for="recipe in pagedRecipes"
             :key="recipe._id"
             :recipe="recipe"
-            @auth-required="openAuthModal"
-            @save-click="toggleSave"
+            :onAuthRequired="openAuthModal"
+            :onSaveClick="toggleSave"
           />
         </RecipeGrid>
+
+        <PaginationBar
+          v-if="filteredRecipes.length > pageSize"
+          v-model:page="page"
+          :pageSize="pageSize"
+          :total="filteredRecipes.length"
+        />
       </section>
     </main>
 
@@ -93,36 +90,56 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useRecipes } from "../modules/useRecipes";
 import { useUser } from "../modules/auth/useUser";
 
 import HeroSearch from "../components/home/HeroSearch.vue";
+import CategoryChips from "../components/home/CategoryChips.vue";
 import HeroSection from "../components/common/HeroSection.vue";
+import PaginationBar from "../components/common/PaginationBar.vue";
 import RecipeGrid from "../components/recipes/RecipeGrid.vue";
 import RecipeCard from "../components/recipes/RecipeCard.vue";
 import BaseButton from "../components/common/BaseButton.vue";
+import { usePagination } from "../composables/usePagination";
 
 const router = useRouter();
 
 const query = ref("");
 const showAuthModal = ref(false);
 const selectedCategory = ref("All");
+const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
 
 const categoryChips = ["All", "Breakfast", "Lunch", "Dinner", "Dessert"];
 
 const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
 const { isLoggedIn } = useUser();
 
+const pageSize = computed(() => {
+  if (viewportWidth.value <= 820) return 6;
+  if (viewportWidth.value <= 1100) return 9;
+  return 12;
+});
+const { page, pagedItems: pagedRecipes, resetPage } = usePagination(recipes, pageSize);
+const handleResize = () => {
+  viewportWidth.value = window.innerWidth;
+};
+
 onMounted(() => {
+  window.addEventListener("resize", handleResize);
   fetchRecipes();
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", handleResize);
 });
 
 let searchTimeout: number | undefined;
 
 watch([query, selectedCategory], ([nextQuery, nextCategory]) => {
+  resetPage();
   window.clearTimeout(searchTimeout);
   searchTimeout = window.setTimeout(() => {
     void fetchRecipes({
@@ -206,39 +223,36 @@ function goToSignUp() {
 }
 
 .categoryControls {
-  flex: 0 0 auto;
+  display: grid;
+  gap: 10px;
+  flex: 1 1 540px;
 }
 
-.categorySelect {
-  display: block;
-  width: fit-content;
-}
-
-.categorySelect__label {
-  display: block;
-  margin-bottom: 8px;
+.categoryControls__label {
   color: #676767;
   font-size: 13px;
   font-weight: 600;
 }
 
-.categorySelect select {
-  width: 180px;
-  height: 46px;
-  border: 1px solid #e4e4e7;
-  border-radius: 14px;
-  background: #fff;
-  color: #444;
-  padding: 0 52px 0 16px;
-  font: inherit;
-  background-position: right 22px center;
+.categoryControls :deep(.chips) {
+  gap: 12px;
 }
 
-.categorySelect select:focus,
-.categorySelect select:focus-visible {
-  outline: none;
-  border-color: #f08b62;
-  box-shadow: 0 0 0 3px rgba(240, 139, 98, 0.16);
+.categoryControls :deep(.chip) {
+  height: 38px;
+  padding: 0 18px;
+  border-color: rgba(255, 114, 76, 0.18);
+  color: #5c544d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.categoryControls :deep(.chip--active) {
+  color: #fff;
+}
+
+.categoryControls :deep(.chip--icon) {
+  display: none;
 }
 
 @media (max-width: 700px) {
@@ -250,16 +264,29 @@ function goToSignUp() {
     flex-basis: 100%;
   }
 
-  .categorySelect {
-    width: 100%;
+  .categoryControls :deep(.chips) {
+    gap: 8px;
+    justify-content: flex-start;
+    align-items: center;
   }
 
-  .categorySelect select {
-    width: 100%;
+  .categoryControls :deep(.chip) {
+    width: auto;
+    flex: 0 0 auto;
+    height: 34px;
+    padding: 0 14px;
+    font-size: 12px;
   }
 
   .section :deep(.btn) {
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .section :deep(.grid) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 

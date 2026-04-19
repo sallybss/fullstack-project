@@ -16,6 +16,18 @@ const name = ref<string>("");
 const email = ref<string>("");
 const password = ref<string>("");
 
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const raw = await response.text();
+  if (!raw) return fallback;
+
+  try {
+    const parsed = JSON.parse(raw) as { error?: string; message?: string };
+    return parsed.error || parsed.message || fallback;
+  } catch {
+    return raw;
+  }
+}
+
 function getAuthHeaders(includeContentType = true): HeadersInit {
   if (!token.value) {
     throw new Error("Authentication token missing");
@@ -60,7 +72,7 @@ export const useUser = () => {
       ]);
 
       if (!userResponse.ok) {
-        throw new Error((await userResponse.text()) || "Failed to fetch current user");
+        throw new Error(await readErrorMessage(userResponse, "Failed to fetch current user"));
       }
 
       const userPayload = await userResponse.json();
@@ -100,7 +112,7 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Login failed");
+        throw new Error(await readErrorMessage(response, "Login failed"));
       }
 
       const authResponse = await response.json();
@@ -131,10 +143,67 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to register user");
+        throw new Error(await readErrorMessage(response, "Failed to register user"));
       }
     } catch (err) {
       error.value = (err as Error).message || "An error occurred";
+    }
+  };
+
+  const requestPasswordReset = async (
+    resetEmail: string,
+  ): Promise<{ message: string; resetLink?: string } | null> => {
+    try {
+      error.value = null;
+
+      const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: resetEmail,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, "Failed to send reset email"));
+      }
+
+      const payload = await response.json();
+      return {
+        message: payload?.data?.message || "If that email exists, a reset link has been sent.",
+        resetLink: payload?.data?.resetLink || undefined,
+      };
+    } catch (err) {
+      error.value = (err as Error).message || "Failed to send reset email";
+      return null;
+    }
+  };
+
+  const resetPasswordWithToken = async (resetToken: string, newPassword: string): Promise<boolean> => {
+    try {
+      error.value = null;
+
+      const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          token: resetToken,
+          newPassword,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(await readErrorMessage(response, "Failed to reset password"));
+      }
+
+      return true;
+    } catch (err) {
+      error.value = (err as Error).message || "Failed to reset password";
+      return false;
     }
   };
 
@@ -167,7 +236,7 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to update profile");
+        throw new Error(await readErrorMessage(response, "Failed to update profile"));
       }
 
       const result = await response.json();
@@ -204,7 +273,7 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to upload avatar");
+        throw new Error(await readErrorMessage(response, "Failed to upload avatar"));
       }
 
       const result = await response.json();
@@ -238,7 +307,7 @@ export const useUser = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to update password");
+        throw new Error(await readErrorMessage(response, "Failed to update password"));
       }
 
       return true;
@@ -325,6 +394,8 @@ export const useUser = () => {
     fetchToken,
     fetchCurrentUser,
     registerUser,
+    requestPasswordReset,
+    resetPasswordWithToken,
     updateProfile,
     uploadAvatar,
     updatePassword,

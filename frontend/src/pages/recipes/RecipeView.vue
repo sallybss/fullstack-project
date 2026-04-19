@@ -22,9 +22,9 @@
           :recipe="recipe"
           :isFollowing="isFollowing"
           :showFollowAction="canFollowOwner"
-          @back="goBack"
-          @toggle-save="toggleSave"
-          @toggle-follow="toggleFollow"
+          :onBack="goBack"
+          :onToggleSave="toggleSave"
+          :onToggleFollow="toggleFollow"
         />
 
         <section class="section">
@@ -66,8 +66,19 @@
             No comments yet.
           </div>
 
+          <div
+            v-else-if="remainingCommentCount > 0"
+            class="comment-toggle"
+          >
+            <button class="link-btn comment-toggle__btn" type="button" @click="showAllComments = !showAllComments">
+              {{ showAllComments
+                ? "Show fewer comments"
+                : `See more comments (${remainingCommentCount})` }}
+            </button>
+          </div>
+
           <article
-            v-for="comment in comments"
+            v-for="comment in visibleComments"
             :key="comment._id"
             class="box comment-item"
           >
@@ -89,8 +100,12 @@
                 </div>
               </div>
 
-              <div v-if="canManageComment(comment.user)" class="comment-tools">
+              <div
+                v-if="canEditComment(comment.user) || canDeleteComment(comment.user)"
+                class="comment-tools"
+              >
                 <button
+                  v-if="canEditComment(comment.user)"
                   class="link-btn"
                   type="button"
                   @click="startEditing(comment)"
@@ -99,6 +114,7 @@
                 </button>
 
                 <button
+                  v-if="canDeleteComment(comment.user)"
                   class="link-btn"
                   type="button"
                   @click="removeComment(comment._id)"
@@ -137,8 +153,8 @@
               v-for="r in otherRecipes"
               :key="r._id"
               :recipe="r"
-              @auth-required="goToSignIn"
-              @save-click="toggleSave"
+              :onAuthRequired="goToSignIn"
+              :onSaveClick="toggleSave"
             />
           </div>
         </section>
@@ -188,8 +204,10 @@ const commentText = ref("");
 const commentError = ref("");
 const editingCommentId = ref("");
 const editingCommentText = ref("");
+const showAllComments = ref(false);
 const selectedRating = ref(0);
 const ratingFeedback = ref("");
+const initialVisibleComments = 1;
 
 const recipeId = computed(() => String(route.params.id));
 const commentAvatarSrc = (avatarUrl?: string) => {
@@ -219,6 +237,12 @@ const heroImageSrc = computed(() => {
 const otherRecipes = computed(() =>
   recipes.value.filter((item) => item._id !== recipeId.value).slice(0, 4),
 );
+const visibleComments = computed(() =>
+  showAllComments.value ? comments.value : comments.value.slice(0, initialVisibleComments),
+);
+const remainingCommentCount = computed(() =>
+  Math.max(0, comments.value.length - initialVisibleComments),
+);
 
 const canFollowOwner = computed(() => {
   if (!isLoggedIn.value || !recipe.value?.owner?._id || !user.value?._id) return false;
@@ -245,6 +269,7 @@ onMounted(async () => {
     }
 
     comments.value = await fetchComments(recipeId.value);
+    showAllComments.value = false;
 
     if (isLoggedIn.value && !user.value) {
       await fetchCurrentUser();
@@ -284,6 +309,7 @@ async function submitComment() {
     commentError.value = "";
     const createdComment = await addComment(recipeId.value, commentText.value);
     comments.value.unshift(createdComment);
+    showAllComments.value = false;
     commentText.value = "";
   } catch (err) {
     commentError.value = (err as Error).message || "Failed to add comment";
@@ -295,6 +321,9 @@ async function removeComment(commentId: string) {
     commentError.value = "";
     await deleteComment(recipeId.value, commentId);
     comments.value = comments.value.filter((comment) => comment._id !== commentId);
+    if (comments.value.length <= initialVisibleComments) {
+      showAllComments.value = false;
+    }
   } catch (err) {
     commentError.value = (err as Error).message || "Failed to delete comment";
   }
@@ -368,8 +397,12 @@ async function toggleFollow() {
   }
 }
 
-function canManageComment(commentUserId: string) {
+function canEditComment(commentUserId: string) {
   return user.value?._id === commentUserId;
+}
+
+function canDeleteComment(commentUserId: string) {
+  return user.value?._id === commentUserId || user.value?.role === "admin";
 }
 
 function formatDate(value?: string) {
@@ -449,6 +482,15 @@ function formatDate(value?: string) {
 
 .comment-item + .comment-item {
   margin-top: 16px;
+}
+
+.comment-toggle {
+  margin-top: 16px;
+}
+
+.comment-toggle__btn {
+  padding: 0;
+  font-weight: 600;
 }
 
 .comment-top {
@@ -543,6 +585,37 @@ function formatDate(value?: string) {
 @media (max-width: 900px) {
   .other-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .container {
+    margin-top: -132px;
+    padding: 0 12px 40px;
+  }
+
+  .recipe-card,
+  .box {
+    border-radius: 18px;
+  }
+
+  .section__head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .comment-top {
+    flex-direction: column;
+  }
+
+  .comment-tools {
+    gap: 10px;
+    justify-content: flex-start;
+  }
+
+  .other-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
   }
 }
 </style>

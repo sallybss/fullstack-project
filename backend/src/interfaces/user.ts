@@ -8,6 +8,8 @@ export interface IUser {
   password: string;
   bio?: string;
   avatarUrl?: string;
+  passwordResetTokenHash?: string;
+  passwordResetExpiresAt?: Date | null;
   role: UserRole;
   status: UserStatus;
   createdAt?: Date;

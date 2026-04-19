@@ -16,6 +16,7 @@ const {
   profile,
   error,
   fetchCurrentUser,
+  requestPasswordReset,
   updateProfile,
   uploadAvatar,
   updatePassword,
@@ -34,6 +35,10 @@ const showPasswords = ref(false);
 const profileMessage = ref("");
 const passwordMessage = ref("");
 const passwordError = ref("");
+const forgotPasswordEmail = ref("");
+const forgotPasswordError = ref("");
+const forgotPasswordSuccess = ref("");
+const showForgotPasswordModal = ref(false);
 const avatarError = ref("");
 const avatarUploadMessage = ref("");
 const isUploadingAvatar = ref(false);
@@ -181,6 +186,31 @@ function cancelPassword() {
   currentPassword.value = "";
   newPassword.value = "";
   confirmPassword.value = "";
+}
+
+function openForgotPasswordModal() {
+  forgotPasswordError.value = "";
+  forgotPasswordEmail.value = user.value?.email || email.value || "";
+  showForgotPasswordModal.value = true;
+}
+
+function closeForgotPasswordModal() {
+  showForgotPasswordModal.value = false;
+  forgotPasswordError.value = "";
+}
+
+async function submitForgotPasswordRequest() {
+  forgotPasswordError.value = "";
+  forgotPasswordSuccess.value = "";
+
+  const result = await requestPasswordReset(forgotPasswordEmail.value);
+  if (!result) {
+    forgotPasswordError.value = error.value || "Failed to send reset email.";
+    return;
+  }
+
+  forgotPasswordSuccess.value = result.message;
+  closeForgotPasswordModal();
 }
 
 async function removeAccount() {
@@ -339,6 +369,10 @@ async function removeAccount() {
             <span>Show password</span>
           </label>
 
+          <button class="forgotPasswordLink" type="button" @click="openForgotPasswordModal">
+            Forgot password?
+          </button>
+
           <BaseButton variant="outline" type="button" @click="cancelPassword">
             Cancel
           </BaseButton>
@@ -372,9 +406,51 @@ async function removeAccount() {
       :aspect-ratio="1"
       :output-width="800"
       :output-height="800"
-      @close="closeAvatarCropper"
-      @apply="applyAvatarCrop"
+      :onClose="closeAvatarCropper"
+      :onApply="applyAvatarCrop"
     />
+
+    <div
+      v-if="showForgotPasswordModal"
+      class="authModalOverlay"
+      @click.self="closeForgotPasswordModal"
+    >
+      <div class="authModal">
+        <button
+          class="authModal__close"
+          type="button"
+          aria-label="Close"
+          @click="closeForgotPasswordModal"
+        >
+          <i class="pi pi-times"></i>
+        </button>
+
+        <h2 class="authModal__title">Reset password</h2>
+        <p class="authModal__text">Enter your email and we’ll send you a reset link.</p>
+
+        <form class="authModal__form" @submit.prevent="submitForgotPasswordRequest">
+          <label class="field authModal__field">
+            <span>Email</span>
+            <input
+              v-model="forgotPasswordEmail"
+              maxlength="255"
+              type="email"
+              autocomplete="email"
+              placeholder="you@email.com"
+              required
+            />
+          </label>
+
+          <p v-if="forgotPasswordError" class="error authModal__message">
+            {{ forgotPasswordError }}
+          </p>
+
+          <BaseButton variant="primary" type="submit">
+            Send reset link
+          </BaseButton>
+        </form>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -429,6 +505,8 @@ async function removeAccount() {
 .avatar {
   width: 56px;
   height: 56px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 56px;
   border-radius: 50%;
   display: grid;
   place-items: center;
@@ -442,6 +520,7 @@ async function removeAccount() {
 .avatarImage {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
@@ -449,6 +528,7 @@ async function removeAccount() {
 .avatar--large {
   width: 92px;
   height: 92px;
+  flex-basis: 92px;
   font-size: 34px;
 }
 
@@ -491,6 +571,8 @@ async function removeAccount() {
 .avatarPanel__content {
   display: grid;
   gap: 8px;
+  flex: 1;
+  min-width: 0;
 }
 
 .avatarPanel__content h3 {
@@ -515,6 +597,7 @@ async function removeAccount() {
 .avatarHint {
   color: #a89d95;
   font-size: 12px;
+  line-height: 1.5;
 }
 
 .avatarInput {
@@ -629,6 +712,15 @@ textarea {
   box-shadow: none;
 }
 
+.forgotPasswordLink {
+  border: 0;
+  background: transparent;
+  color: #ff724c;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -669,6 +761,68 @@ textarea {
   flex-shrink: 0;
 }
 
+.authModalOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(0, 0, 0, 0.58);
+}
+
+.authModal {
+  position: relative;
+  width: min(460px, 100%);
+  border-radius: 24px;
+  padding: 24px;
+  background: #1b1512;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.28);
+}
+
+.authModal__close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 38px;
+  height: 38px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  cursor: pointer;
+}
+
+.authModal__title {
+  margin: 0;
+  color: #fff;
+  font-size: 1.8rem;
+}
+
+.authModal__text {
+  margin: 10px 0 20px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.5;
+}
+
+.authModal__form {
+  display: grid;
+  gap: 16px;
+}
+
+.authModal__field span {
+  color: #fff;
+  font-size: 13px;
+}
+
+.authModal__field input {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.authModal__message {
+  margin: 0;
+}
+
 @media (max-width: 900px) {
   .container {
     margin-top: -150px;
@@ -697,6 +851,10 @@ textarea {
     margin-right: 0;
   }
 
+  .forgotPasswordLink {
+    text-align: left;
+  }
+
   .dangerBtn {
     width: 100%;
   }
@@ -717,6 +875,10 @@ textarea {
     padding: 0;
   }
 
+  .sectionHead {
+    margin-bottom: 16px;
+  }
+
   .left {
     align-items: flex-start;
   }
@@ -729,6 +891,50 @@ textarea {
 
   .name {
     font-size: 1.8rem;
+  }
+
+  .avatarPanel {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+    padding: 18px;
+    border: 1px solid rgba(240, 139, 98, 0.16);
+    border-radius: 24px;
+    background: linear-gradient(180deg, rgba(255, 248, 244, 0.95) 0%, #ffffff 100%);
+  }
+
+  .avatar--large {
+    width: 88px;
+    height: 88px;
+    flex-basis: 88px;
+    margin: 0 auto;
+  }
+
+  .avatarPanel__content {
+    gap: 10px;
+    text-align: center;
+    justify-items: center;
+  }
+
+  .avatarPanel__content p {
+    max-width: 22ch;
+  }
+
+  .avatarPanel__actions {
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .avatarPanel__actions :deep(.baseButton),
+  .avatarPanel__actions button {
+    width: 100%;
+  }
+
+  .avatarHint {
+    display: block;
+    text-align: center;
   }
 }
 </style>

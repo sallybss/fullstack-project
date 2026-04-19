@@ -1,5 +1,5 @@
 <template>
-  <div v-if="visible && file" class="cropperOverlay" @click.self="emit('close')">
+  <div v-if="visible && file" class="cropperOverlay" @click.self="props.onClose?.()">
     <div class="cropperModal">
       <div class="cropperModal__head">
         <div>
@@ -7,7 +7,7 @@
           <p>Resize and choose which part of the image should stay visible.</p>
         </div>
 
-        <button class="cropperModal__close" type="button" @click="emit('close')">
+        <button class="cropperModal__close" type="button" @click="props.onClose?.()">
           <i class="pi pi-times"></i>
         </button>
       </div>
@@ -36,7 +36,7 @@
       <p v-if="errorMessage" class="cropperError">{{ errorMessage }}</p>
 
       <div class="cropperActions">
-        <button class="cropperBtn cropperBtn--secondary" type="button" @click="emit('close')">
+        <button class="cropperBtn cropperBtn--secondary" type="button" @click="props.onClose?.()">
           Cancel
         </button>
         <button class="cropperBtn cropperBtn--primary" type="button" :disabled="isApplying" @click="applyCrop">
@@ -61,6 +61,8 @@ const props = withDefaults(
     outputHeight?: number;
     quality?: number;
     outputType?: string;
+    onClose?: () => void;
+    onApply?: (file: File) => void;
   }>(),
   {
     title: "Edit image",
@@ -72,11 +74,6 @@ const props = withDefaults(
     outputType: "image/jpeg",
   },
 );
-
-const emit = defineEmits<{
-  (e: "close"): void;
-  (e: "apply", file: File): void;
-}>();
 
 const sourceUrl = ref("");
 const naturalWidth = ref(0);
@@ -223,8 +220,7 @@ async function applyCrop() {
     const extension = props.outputType === "image/png" ? "png" : "jpg";
     const fileName = props.file.name.replace(/\.[^.]+$/, "") || "image";
 
-    emit(
-      "apply",
+    props.onApply?.(
       new File([blob], `${fileName}.${extension}`, {
         type: props.outputType,
         lastModified: Date.now(),
@@ -291,6 +287,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 .cropperModal__head p {
   margin: 8px 0 0;
   color: #826e61;
+  line-height: 1.45;
 }
 
 .cropperModal__close {
@@ -314,6 +311,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   border: 2px dashed #ef8358;
   background-color: #f2ede7;
   overflow: hidden;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
 }
 
 .cropperControls {
@@ -325,6 +323,9 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 .cropperControl {
   display: grid;
   gap: 8px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.7);
   color: #6c5c50;
   font-size: 0.95rem;
   font-weight: 600;
@@ -351,6 +352,7 @@ function loadImage(url: string): Promise<HTMLImageElement> {
   border: 0;
   border-radius: 999px;
   padding: 12px 18px;
+  min-height: 48px;
   font: inherit;
   font-weight: 700;
   cursor: pointer;
@@ -372,23 +374,78 @@ function loadImage(url: string): Promise<HTMLImageElement> {
 }
 
 @media (max-width: 640px) {
+  .cropperOverlay {
+    align-items: end;
+    padding: 0;
+    background: rgba(0, 0, 0, 0.58);
+  }
+
   .cropperModal {
-    width: min(560px, 100%);
-    max-height: calc(100vh - 20px);
-    padding: 16px;
-    border-radius: 22px;
+    width: 100%;
+    max-height: min(92vh, 100dvh);
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 28px 28px 0 0;
+    box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.24);
+  }
+
+  .cropperModal__head {
+    align-items: flex-start;
+    padding-bottom: 12px;
+    margin-bottom: 6px;
   }
 
   .cropperModal__head h2 {
     font-size: 1.45rem;
+    line-height: 1.1;
+  }
+
+  .cropperModal__head p {
+    margin-top: 10px;
+    max-width: 20ch;
+    font-size: 0.98rem;
   }
 
   .cropperPreview {
-    max-height: min(38vh, 320px);
+    max-height: min(34vh, 300px);
+    border-radius: 20px;
+  }
+
+  .cropperControls {
+    gap: 10px;
+  }
+
+  .cropperControl {
+    gap: 10px;
+    padding: 12px;
+    font-size: 1rem;
+  }
+
+  .cropperControl span {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cropperControl input {
+    min-height: 32px;
+  }
+
+  .cropperError {
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    background: rgba(188, 77, 58, 0.08);
   }
 
   .cropperActions {
+    margin: 18px 0 0;
+    padding: 0 0 calc(env(safe-area-inset-bottom) + 4px);
     flex-direction: column;
+    gap: 10px;
+  }
+
+  .cropperBtn {
+    width: 100%;
   }
 }
 </style>

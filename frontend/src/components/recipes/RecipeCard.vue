@@ -70,7 +70,7 @@
           class="deleteBtn"
           type="button"
           aria-label="Delete"
-          @click="emit('delete', recipe._id)"
+          @click="props.onDelete?.(recipe._id)"
         >
           <i class="pi pi-trash"></i>
         </button>
@@ -96,13 +96,10 @@ const props = defineProps<{
   plannerDisabled?: boolean;
   plannerLabel?: string;
   showDelete?: boolean;
-}>();
-
-const emit = defineEmits<{
-  (e: "auth-required"): void;
-  (e: "save-click", recipeId: string): void;
-  (e: "planner-add", recipeId: string): void;
-  (e: "delete", recipeId: string): void;
+  onAuthRequired?: () => void;
+  onSaveClick?: (recipeId: string) => void;
+  onPlannerAdd?: (recipeId: string) => void;
+  onDelete?: (recipeId: string) => void;
 }>();
 
 const fallbackImage = "https://picsum.photos/seed/recipe/600/600";
@@ -152,11 +149,11 @@ function handleViewClick() {
 // Save action is also protected for guests
 function handleSaveClick() {
   if (!isLoggedIn.value) {
-    emit("auth-required");
+    props.onAuthRequired?.();
     return;
   }
 
-  emit("save-click", props.recipe._id);
+  props.onSaveClick?.(props.recipe._id);
 }
 
 function handlePlannerAddClick() {
@@ -164,7 +161,7 @@ function handlePlannerAddClick() {
     return;
   }
 
-  emit("planner-add", props.recipe._id);
+  props.onPlannerAdd?.(props.recipe._id);
 }
 
 // Falls back to a placeholder if image URL is broken
@@ -199,6 +196,7 @@ function handleImageError(event: Event) {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   font-size: 12px;
   color: rgba(0, 0, 0, 0.55);
@@ -209,6 +207,10 @@ function handleImageError(event: Event) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: #f7f6fb;
 }
 
 .card__clock {
@@ -241,6 +243,11 @@ function handleImageError(event: Event) {
   font-size: 14px;
   font-weight: 700;
   color: #111;
+  line-height: 1.3;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card__actions {
@@ -315,5 +322,51 @@ function handleImageError(event: Event) {
 
 .plannerBtn--disabled {
   cursor: not-allowed;
+}
+
+@media (max-width: 640px) {
+  .card {
+    gap: 10px;
+  }
+
+  .card__meta {
+    gap: 6px;
+  }
+
+  .card__time,
+  .card__rating {
+    min-height: 36px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .card__rating {
+    max-width: 100%;
+  }
+
+  .stars {
+    display: inline-flex;
+    gap: 1px;
+  }
+
+  .star,
+  .ratingAverage,
+  .ratingCount {
+    font-size: 13px;
+  }
+
+  .card__title {
+    font-size: 15px;
+  }
+
+  .card__actions {
+    gap: 8px;
+  }
+
+  .card__view,
+  .saveBtn,
+  .deleteBtn {
+    min-height: 38px;
+  }
 }
 </style>

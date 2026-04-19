@@ -1,12 +1,6 @@
 <template>
   <div class="contact-page">
-    <section class="contact-hero" :style="heroBackgroundStyle">
-      <div class="contact-hero__overlay"></div>
-      <AdminCoverEditor
-        setting-key="contact-hero"
-        :initial-image-url="heroImageUrl"
-        @updated="updateHeroImage($event)"
-      />
+    <HeroSection imageUrl="https://picsum.photos/seed/contacthero/1400/700" setting-key="contact-hero">
       <div class="contact-hero__content">
         <p class="contact-hero__eyebrow">Ask us</p>
         <h1>Ask Us</h1>
@@ -15,7 +9,7 @@
           hear from you.
         </p>
       </div>
-    </section>
+    </HeroSection>
 
     <main class="contact-main">
       <section class="contact-cards" aria-label="Contact details">
@@ -132,17 +126,10 @@
 
 <script setup lang="ts">
 import { reactive, ref } from "vue";
-import AdminCoverEditor from "../components/common/AdminCoverEditor.vue";
+import HeroSection from "../components/common/HeroSection.vue";
 import ContactInfoCard from "../components/contact/ContactInfoCard.vue";
-import heroImage from "../assets/images/hero.jpg";
-import { useEditableHero } from "../composables/useEditableHero";
 
 const MAX_MESSAGE_LENGTH = 1000;
-
-const { heroImageUrl, heroBackgroundStyle, updateHeroImage } = useEditableHero(
-  heroImage,
-  "linear-gradient(180deg, rgba(11, 10, 9, 0.24) 0%, rgba(11, 10, 9, 0.5) 100%)",
-);
 
 const contactCards = [
   {
@@ -211,49 +198,23 @@ async function handleSubmit() {
 <style scoped lang="scss">
 .contact-page {
   min-height: 100vh;
-  background: #f7f4ef;
+  background: #f6f6fb;
   color: #2c2622;
 }
 
-.contact-hero {
-  position: relative;
-  height: 420px;
-  padding: 112px 24px 72px;
-  display: grid;
-  place-items: center;
-  text-align: center;
-  background-position: center center;
-  background-size: cover;
-  background-repeat: no-repeat;
-  z-index: 0;
-  border-bottom-left-radius: 28px;
-  border-bottom-right-radius: 28px;
-  overflow: hidden;
-}
-
-.contact-hero__overlay {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at top center, rgba(255, 151, 105, 0.14), transparent 32%),
-    linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.2));
-}
-
-.contact-hero__content {
+:deep(.contact-hero__content) {
   position: relative;
   z-index: 1;
   width: min(560px, 100%);
+  margin: 0 auto;
+  text-align: center;
 }
 
-.contact-hero__eyebrow {
-  margin: 0 0 10px;
-  color: #f08b62;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0;
+:deep(.contact-hero__eyebrow) {
+  display: none;
 }
 
-.contact-hero h1 {
+:deep(.contact-hero__content h1) {
   margin: 0;
   color: #fff;
   font-size: clamp(2rem, 4vw, 3rem);
@@ -261,19 +222,19 @@ async function handleSubmit() {
   letter-spacing: 0;
 }
 
-.contact-hero p:last-child {
+:deep(.contact-hero__content p:last-child) {
   margin: 14px auto 0;
-  color: rgba(255, 255, 255, 0.87);
+  color: #fff;
   font-size: 0.95rem;
   line-height: 1.7;
 }
 
 .contact-main {
   width: min(980px, calc(100vw - 48px));
-  margin: -14px auto 0;
+  margin: -72px auto 0;
   padding-bottom: 40px;
   position: relative;
-  z-index: 1;
+  z-index: 6;
 }
 
 .contact-cards {
@@ -413,6 +374,7 @@ async function handleSubmit() {
 @media (max-width: 1080px) {
   .contact-main {
     width: min(980px, calc(100vw - 32px));
+    margin-top: -56px;
   }
 
   .contact-content {
@@ -424,19 +386,13 @@ async function handleSubmit() {
 @media (max-width: 760px) {
   .contact-main {
     width: min(980px, calc(100vw - 24px));
-    margin-top: -10px;
-  }
-
-  .contact-cards {
-    grid-template-columns: 1fr;
+    margin-top: -38px;
   }
 }
 
 @media (max-width: 560px) {
-  .contact-hero {
+  :deep(.hero) {
     height: 380px;
-    padding: 104px 18px 92px;
   }
-
 }
 </style>

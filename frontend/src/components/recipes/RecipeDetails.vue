@@ -1,7 +1,7 @@
 <template>
   <article class="details">
     <div class="top">
-      <button class="back" type="button" @click="$emit('back')">
+      <button class="back" type="button" @click="props.onBack?.()">
         <i class="pi pi-arrow-left"></i>
         <span>Go back</span>
       </button>
@@ -29,7 +29,7 @@
           :variant="isFollowing ? 'outline' : 'primary'"
           class="actionBtn"
           type="button"
-          @click="$emit('toggle-follow')"
+          @click="props.onToggleFollow?.()"
         >
           {{ isFollowing ? "Following" : "Follow" }}
         </BaseButton>
@@ -52,7 +52,7 @@
         class="saveBtn"
         type="button"
         :class="{ 'is-saved': recipe.saved }"
-        @click="$emit('toggle-save', recipe._id)"
+        @click="props.onToggleSave?.(recipe._id)"
         aria-label="Save recipe"
       >
         <i
@@ -148,12 +148,9 @@ const props = defineProps<{
   recipe: Recipe;
   isFollowing?: boolean;
   showFollowAction?: boolean;
-}>();
-
-defineEmits<{
-  (e: "back"): void;
-  (e: "toggle-save", id: string): void;
-  (e: "toggle-follow"): void;
+  onBack?: () => void;
+  onToggleSave?: (id: string) => void;
+  onToggleFollow?: () => void;
 }>();
 
 const router = useRouter();
@@ -263,6 +260,7 @@ function toggleIngredient(index: number) {
   display: flex;
   align-items: center;
   gap: 12px;
+  min-width: 0;
 }
 
 .avatar {
@@ -278,6 +276,7 @@ function toggleIngredient(index: number) {
   color: #8a8a8a;
   font-size: 13px;
   margin-top: 2px;
+  line-height: 1.45;
 }
 
 .actions {
@@ -285,11 +284,13 @@ function toggleIngredient(index: number) {
   gap: 12px;
 }
 
-
-
 .saveBtn {
   width: 38px;
+  min-width: 38px;
   height: 38px;
+  min-height: 38px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 38px;
   border-radius: 999px;
   border: 1px solid #ff734c53;
   background: #fff;
@@ -326,11 +327,14 @@ function toggleIngredient(index: number) {
   font-size: 44px;
   line-height: 1.05;
   letter-spacing: -0.5px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 18px;
   margin-top: 10px;
   color: #777;
@@ -341,6 +345,10 @@ function toggleIngredient(index: number) {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #f8f7fb;
 }
 
 .rating {
@@ -443,9 +451,14 @@ function toggleIngredient(index: number) {
 .olist {
   margin: 0;
   padding-left: 18px;
+  list-style: decimal;
   display: grid;
   gap: 10px;
   color: #666;
+}
+
+.olist li {
+  display: list-item;
 }
 
 .empty {
@@ -464,6 +477,108 @@ function toggleIngredient(index: number) {
   .actions {
     flex-wrap: wrap;
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 640px) {
+  .details {
+    border-radius: 24px;
+    padding: 18px 16px 22px;
+  }
+
+  .authorRow {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .author {
+    align-items: center;
+    gap: 14px;
+  }
+
+  .avatar {
+    width: 52px;
+    height: 52px;
+    flex: 0 0 52px;
+  }
+
+  .authorName {
+    font-size: 1.35rem;
+    line-height: 1.1;
+  }
+
+  .authorEmail {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  .actionBtn {
+    width: 100%;
+    min-height: 46px;
+    justify-content: center;
+  }
+
+  .titleRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    display: grid;
+    align-items: start;
+    gap: 12px;
+    margin-top: 18px;
+  }
+
+  .title {
+    max-width: 100%;
+    font-size: clamp(1.9rem, 9vw, 2.8rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .saveBtn {
+    width: 46px;
+    height: 46px;
+    margin-top: 4px;
+  }
+
+  .meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 16px;
+  }
+
+  .metaItem {
+    justify-content: flex-start;
+    min-width: 0;
+    padding: 12px 14px;
+    border-radius: 18px;
+    background: #f7f6fb;
+    font-size: 15px;
+    line-height: 1.3;
+  }
+
+  .rating {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+
+  .desc {
+    margin-top: 16px;
+    font-size: 15px;
+  }
+
+  .panel {
+    padding: 16px;
   }
 }
 </style>

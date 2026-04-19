@@ -109,9 +109,9 @@
                 :key="r._id"
                 :recipe="r"
                 :show-delete="canAdminDeleteRecipes"
-                @auth-required="goToSignIn"
-                @save-click="handleToggleSave"
-                @delete="handleAdminDeleteRecipe"
+                :onAuthRequired="goToSignIn"
+                :onSaveClick="handleToggleSave"
+                :onDelete="handleAdminDeleteRecipe"
               />
             </div>
 
@@ -162,7 +162,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
@@ -194,7 +194,16 @@ const activeSection = ref<"posts" | "saved">("posts");
 const peopleModal = ref<"followers" | "following" | null>(null);
 
 const profileId = computed(() => String(route.params.id || ""));
-const pageSize = 8;
+const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
+const pageSize = computed(() => {
+  if (viewportWidth.value <= 520) return 4;
+  if (viewportWidth.value <= 900) return 6;
+  if (viewportWidth.value <= 1100) return 9;
+  return 12;
+});
+const handleResize = () => {
+  viewportWidth.value = window.innerWidth;
+};
 const {
   page: postsPage,
   totalItems: totalPosts,
@@ -261,6 +270,7 @@ const canAdminDeleteRecipes = computed(() => {
 });
 
 onMounted(async () => {
+  window.addEventListener("resize", handleResize);
   try {
     loadingProfile.value = true;
     pageError.value = "";
@@ -318,6 +328,10 @@ onMounted(async () => {
   } finally {
     loadingProfile.value = false;
   }
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", handleResize);
 });
 
 function goBack() {
@@ -436,6 +450,8 @@ async function handleAdminDeleteRecipe(recipeId: string) {
 .avatar {
   width: 54px;
   height: 54px;
+  aspect-ratio: 1 / 1;
+  flex: 0 0 54px;
   border-radius: 50%;
   background: #f1f1f6;
   display: grid;
@@ -448,6 +464,7 @@ async function handleAdminDeleteRecipe(recipeId: string) {
 .avatarImage {
   width: 100%;
   height: 100%;
+  border-radius: 50%;
   object-fit: cover;
   display: block;
 }
@@ -536,6 +553,11 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
+}
+
+.grid > * {
+  min-width: 0;
 }
 
 .pager {
@@ -614,13 +636,112 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   }
 
   .grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 520px) {
+  .container {
+    margin-top: -126px;
+    padding: 0 10px 28px;
+  }
+
+  .profile-card {
+    border-radius: 24px;
+    padding: 18px 16px 20px;
+  }
+
+  .back {
+    font-size: 13px;
+  }
+
+  .profile-top {
+    gap: 14px;
+    margin-top: 14px;
+  }
+
+  .left {
+    width: 100%;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .avatar {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+  }
+
+  .meta {
+    min-width: 0;
+    gap: 6px;
+  }
+
+  .name {
+    font-size: 20px;
+    line-height: 1.05;
+  }
+
+  .sub {
+    font-size: 12px;
+    line-height: 1.45;
+  }
+
+  .right {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    width: 100%;
+  }
+
+  .right > * {
+    min-width: 0;
+  }
+
+  .right :deep(.baseButton),
+  .right :deep(button.baseButton) {
+    width: 100%;
+  }
+
+  .stat {
+    justify-content: center;
+    padding: 12px 10px;
+    text-align: center;
+    white-space: normal;
+    line-height: 1.35;
+  }
+
+  .bio {
+    margin-top: 16px;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  .section {
+    margin-top: 20px;
+  }
+
+  .content-tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .content-tab {
+    width: 100%;
+    text-align: center;
+  }
+
   .grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 10px;
+  }
+
+  :deep(.hero .coverEditor) {
+    top: 88px;
+    bottom: auto;
+    right: 14px;
   }
 }
 </style>

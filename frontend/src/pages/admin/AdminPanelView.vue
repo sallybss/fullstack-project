@@ -233,7 +233,12 @@ function viewPosts(id: string) {
                       View posts
                     </BaseButton>
 
-                    <button class="circleBtn" type="button" @click="toggleBlock(entry._id)">
+                    <button
+                      v-if="entry._id !== user?._id"
+                      class="circleBtn"
+                      type="button"
+                      @click="toggleBlock(entry._id)"
+                    >
                       <i class="pi pi-shield"></i>
                     </button>
 
