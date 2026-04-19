@@ -18,7 +18,10 @@
         <template v-else>
           <div class="profile-top">
             <div class="left">
-              <div class="avatar">{{ ownerInitial }}</div>
+              <div class="avatar">
+                <img v-if="avatarSrc" :src="avatarSrc" alt="Profile avatar" class="avatarImage" />
+                <span v-else>{{ ownerInitial }}</span>
+              </div>
 
               <div class="meta">
                 <h1 class="name">{{ profileData?.username || "Unknown" }}</h1>
@@ -223,6 +226,11 @@ const activeTotal = computed(() =>
     ? totalPosts.value
     : totalSavedRecipes.value,
 );
+const avatarSrc = computed(() => {
+  const value = profileData.value?.avatarUrl || "";
+  if (!value) return "";
+  return value.startsWith("http") ? value : `${API_URL}${value}`;
+});
 
 const ownerInitial = computed(() => {
   const username = profileData.value?.username ?? "U";
@@ -434,6 +442,14 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   place-items: center;
   font-weight: 800;
   color: #333;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .meta {
@@ -457,8 +473,9 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   display: flex;
   align-items: center;
   gap: 12px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   justify-content: flex-end;
+  flex-shrink: 0;
 }
 
 .stat {
@@ -470,6 +487,7 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   background: #f6f6fb;
   color: #333;
   font-size: 13px;
+  white-space: nowrap;
 }
 
 .stat--button {
@@ -583,10 +601,16 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
   .profile-top {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .right {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
   }
 
   .grid {

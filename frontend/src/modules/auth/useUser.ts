@@ -190,6 +190,40 @@ export const useUser = () => {
     }
   };
 
+  const uploadAvatar = async (file: File): Promise<Profile | null> => {
+    try {
+      error.value = null;
+
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const response = await fetch(`${API_URL}/api/profiles/me/avatar`, {
+        method: "POST",
+        headers: getAuthHeaders(false),
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error((await response.text()) || "Failed to upload avatar");
+      }
+
+      const result = await response.json();
+      profile.value = result.data;
+
+      if (user.value) {
+        user.value = {
+          ...user.value,
+          avatarUrl: result.data?.avatarUrl ?? user.value.avatarUrl,
+        };
+      }
+
+      return profile.value;
+    } catch (err) {
+      error.value = (err as Error).message || "Failed to upload avatar";
+      return null;
+    }
+  };
+
   const updatePassword = async (
     currentPassword: string,
     newPassword: string,
@@ -292,6 +326,7 @@ export const useUser = () => {
     fetchCurrentUser,
     registerUser,
     updateProfile,
+    uploadAvatar,
     updatePassword,
     deleteAccount,
     fetchUsers,

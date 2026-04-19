@@ -33,6 +33,11 @@ function profileSelect() {
   return "user username bio avatarUrl followers following createdAt updatedAt";
 }
 
+const USERNAME_MAX_LENGTH = 100;
+const BIO_MAX_LENGTH = 300;
+const AVATAR_URL_MAX_LENGTH = 500;
+const EMAIL_MAX_LENGTH = 255;
+
 function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; avatarUrl?: string; email?: string } {
   const update: { username?: string; bio?: string; avatarUrl?: string; email?: string } = {};
 
@@ -40,16 +45,22 @@ function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; av
     if (typeof body.username !== "string" || body.username.trim().length < 2) {
       throw new Error("username must be at least 2 characters");
     }
+    if (body.username.trim().length > USERNAME_MAX_LENGTH) {
+      throw new Error(`username must be at most ${USERNAME_MAX_LENGTH} characters`);
+    }
     update.username = body.username.trim();
   }
 
   if (body.bio !== undefined) {
     if (typeof body.bio !== "string") throw new Error("bio must be a string");
-    if (body.bio.length > 300) throw new Error("bio must be at most 300 characters");
+    if (body.bio.length > BIO_MAX_LENGTH) throw new Error(`bio must be at most ${BIO_MAX_LENGTH} characters`);
     update.bio = body.bio.trim();
   }
 
   if (body.avatarUrl !== undefined) {
+    if (String(body.avatarUrl ?? "").length > AVATAR_URL_MAX_LENGTH) {
+      throw new Error(`avatarUrl must be at most ${AVATAR_URL_MAX_LENGTH} characters`);
+    }
     if (body.avatarUrl && !isValidUrl(body.avatarUrl)) {
       throw new Error("avatarUrl must be a valid http/https URL");
     }
@@ -58,6 +69,9 @@ function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; av
 
   if (body.email !== undefined) {
     const email = String(body.email || "").trim().toLowerCase();
+    if (email.length > EMAIL_MAX_LENGTH) {
+      throw new Error(`email must be at most ${EMAIL_MAX_LENGTH} characters`);
+    }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       throw new Error("email must be a valid email address");
@@ -143,6 +157,46 @@ export async function updateMyProfile(req: Request, res: Response) {
     const isValidationError =
       message.includes("username") || message.includes("bio") || message.includes("avatarUrl") || message.includes("email");
     res.status(isValidationError ? 400 : 500).send(message);
+  }
+}
+
+export async function uploadMyAvatar(req: Request, res: Response) {
+  try {
+    await connect();
+
+    const authUser = getAuthUser(req);
+    if (!authUser) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    if (!req.file?.filename) {
+      res.status(400).json({ error: "Avatar image file is required" });
+      return;
+    }
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const profile = await ensureProfileForUser(authUser.id, authUser.username);
+
+    if (!profile) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+
+    await userModel.findByIdAndUpdate(authUser.id, { $set: { avatarUrl } });
+
+    const updatedProfile = await profileModel
+      .findByIdAndUpdate(
+        profile._id,
+        { $set: { avatarUrl } },
+        { returnDocument: "after" }
+      )
+      .select(profileSelect());
+
+    res.status(200).json({ error: null, data: updatedProfile });
+  } catch (err: any) {
+    const message = String(err?.message || err);
+    res.status(message.includes("Avatar") ? 400 : 500).send(message);
   }
 }
 

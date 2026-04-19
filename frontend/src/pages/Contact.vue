@@ -38,6 +38,7 @@
             <input
               v-model="form.name"
               type="text"
+              maxlength="100"
               placeholder="Your name"
               autocomplete="name"
               required
@@ -46,6 +47,7 @@
             <input
               v-model="form.email"
               type="email"
+              maxlength="255"
               placeholder="Your email"
               autocomplete="email"
               required
@@ -54,6 +56,7 @@
             <input
               v-model="form.subject"
               type="text"
+              maxlength="150"
               placeholder="Subject"
               required
             />

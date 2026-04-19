@@ -108,6 +108,47 @@ export function setupDocs(app: Application) {
             },
           },
         },
+        MealPlanDay: {
+          type: "object",
+          properties: {
+            breakfast: { type: "string", example: "69e40556de162e6f5c49ad30" },
+            lunch: { type: "string", example: "" },
+            dinner: { type: "string", example: "69e40556de162e6f5c49ad31" },
+          },
+        },
+        MealPlanInput: {
+          type: "object",
+          required: ["name", "days"],
+          properties: {
+            name: { type: "string", example: "Week 18" },
+            weekLabel: { type: "string", example: "Apr 20 - Apr 26" },
+            days: {
+              type: "object",
+              properties: {
+                monday: { $ref: "#/components/schemas/MealPlanDay" },
+                tuesday: { $ref: "#/components/schemas/MealPlanDay" },
+                wednesday: { $ref: "#/components/schemas/MealPlanDay" },
+                thursday: { $ref: "#/components/schemas/MealPlanDay" },
+                friday: { $ref: "#/components/schemas/MealPlanDay" },
+                saturday: { $ref: "#/components/schemas/MealPlanDay" },
+                sunday: { $ref: "#/components/schemas/MealPlanDay" },
+              },
+            },
+          },
+        },
+        MealPlan: {
+          allOf: [
+            { $ref: "#/components/schemas/MealPlanInput" },
+            {
+              type: "object",
+              properties: {
+                id: { type: "string", example: "6803d6d6a92296296a0a0c11" },
+                createdAt: { type: "string", format: "date-time" },
+                updatedAt: { type: "string", format: "date-time" },
+              },
+            },
+          ],
+        },
       },
     },
   };

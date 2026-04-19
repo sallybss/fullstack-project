@@ -5,6 +5,7 @@ export interface IRecipeComment {
   _id: string;
   user: IUserPublicProfile["_id"];
   username: string;
+  avatarUrl?: string;
   text: string;
   createdAt: Date;
   updatedAt: Date;

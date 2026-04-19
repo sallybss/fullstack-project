@@ -4,6 +4,7 @@ import authRoutes from "./routes/authRoutes";
 import profileRoutes from "./routes/profileRoutes";
 import contactRoutes from "./routes/contactRoutes";
 import siteSettingsRoutes from "./routes/siteSettingsRoutes";
+import mealPlanRoutes from "./routes/mealPlanRoutes";
 
 const router: Router = Router();
 
@@ -213,6 +214,110 @@ router.get("/", (_req: Request, res: Response) => {
 router.use("/auth", authRoutes);
 router.use("/profiles", profileRoutes);
 router.use("/settings", siteSettingsRoutes);
+router.use("/meal-plans", mealPlanRoutes);
+
+/**
+ * @swagger
+ * /meal-plans:
+ *   get:
+ *     tags: [Meal Plans]
+ *     summary: Get my meal plans
+ *     security:
+ *       - ApiKeyAuth: []
+ *     responses:
+ *       200:
+ *         description: List of the authenticated user's meal plans
+ *       401:
+ *         description: Missing/invalid token
+ *
+ *   post:
+ *     tags: [Meal Plans]
+ *     summary: Create a meal plan
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/MealPlanInput"
+ *     responses:
+ *       201:
+ *         description: Meal plan created
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Missing/invalid token
+ *
+ * /meal-plans/{id}:
+ *   get:
+ *     tags: [Meal Plans]
+ *     summary: Get one meal plan
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meal plan id
+ *     responses:
+ *       200:
+ *         description: Meal plan found
+ *       401:
+ *         description: Missing/invalid token
+ *       404:
+ *         description: Meal plan not found
+ *
+ *   put:
+ *     tags: [Meal Plans]
+ *     summary: Update a meal plan
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meal plan id
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: "#/components/schemas/MealPlanInput"
+ *     responses:
+ *       200:
+ *         description: Meal plan updated
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Missing/invalid token
+ *       404:
+ *         description: Meal plan not found
+ *
+ *   delete:
+ *     tags: [Meal Plans]
+ *     summary: Delete a meal plan
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Meal plan id
+ *     responses:
+ *       200:
+ *         description: Meal plan deleted
+ *       401:
+ *         description: Missing/invalid token
+ *       404:
+ *         description: Meal plan not found
+ */
 
 /**
  * @swagger
@@ -297,6 +402,40 @@ router.use("/contact", contactRoutes);
  *         description: Hero setting updated
  *       400:
  *         description: Invalid input
+ *       401:
+ *         description: Missing/invalid token
+ *       403:
+ *         description: Admin access required
+ *
+ * /settings/hero/{key}/upload:
+ *   post:
+ *     tags: [Settings]
+ *     summary: Upload a hero cover image
+ *     description: Uploads an image file for a named hero cover key and stores the saved image path (admin only).
+ *     security:
+ *       - ApiKeyAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: key
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [cover]
+ *             properties:
+ *               cover:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Hero cover uploaded
+ *       400:
+ *         description: Missing key or invalid file
  *       401:
  *         description: Missing/invalid token
  *       403:
@@ -768,6 +907,31 @@ router.use("/recipes", recipeRoutes);
  *         description: Updated profile
  *       400:
  *         description: Validation error
+ *       401:
+ *         description: Missing/invalid token
+ *
+ * /profiles/me/avatar:
+ *   post:
+ *     tags: [Profiles]
+ *     summary: Upload my avatar
+ *     security:
+ *       - ApiKeyAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required: [avatar]
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Updated profile with avatar image
+ *       400:
+ *         description: Invalid file or missing avatar
  *       401:
  *         description: Missing/invalid token
  */

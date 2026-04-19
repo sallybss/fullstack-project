@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from "vue";
 import BaseButton from "../common/BaseButton.vue";
+import ImageCropperModal from "../common/ImageCropperModal.vue";
+import { validateImageDimensions } from "../../composables/useImageValidation";
 
 type IngredientRow = {
   qty: string;
@@ -59,6 +61,8 @@ const steps = ref<string[]>([""]);
 const fileInput = ref<HTMLInputElement | null>(null);
 const imageFile = ref<File | null>(null);
 const imagePreview = ref("");
+const pendingCropFile = ref<File | null>(null);
+const showCropper = ref(false);
 
 const categoryOptions = ["Breakfast", "Lunch", "Dinner", "Dessert"];
 
@@ -142,14 +146,14 @@ function openFilePicker() {
   fileInput.value?.click();
 }
 
-function handleImageChange(event: Event) {
+async function handleImageChange(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
 
   if (!file) return;
 
   const allowedTypes = ["image/png", "image/jpeg"];
-  const maxSize = 5 * 1024 * 1024;
+  const maxSize = 8 * 1024 * 1024;
 
   if (!allowedTypes.includes(file.type)) {
     localError.value = "Only JPG and PNG images are allowed.";
@@ -158,14 +162,31 @@ function handleImageChange(event: Event) {
   }
 
   if (file.size > maxSize) {
-    localError.value = "Image must be smaller than 5MB.";
+    localError.value = "Image must be smaller than 8MB before upload.";
     target.value = "";
     return;
   }
 
-  localError.value = "";
-  imageFile.value = file;
-  imagePreview.value = URL.createObjectURL(file);
+  try {
+    await validateImageDimensions(
+      file,
+      {
+        minWidth: 600,
+        minHeight: 600,
+        maxWidth: 8000,
+        maxHeight: 8000,
+      },
+      "Recipe image",
+    );
+
+    localError.value = "";
+    pendingCropFile.value = file;
+    showCropper.value = true;
+    target.value = "";
+  } catch (error) {
+    localError.value = (error as Error).message || "Invalid image size.";
+    target.value = "";
+  }
 }
 
 function removeImage() {
@@ -176,6 +197,18 @@ function removeImage() {
   if (fileInput.value) {
     fileInput.value.value = "";
   }
+}
+
+function closeCropper() {
+  showCropper.value = false;
+  pendingCropFile.value = null;
+}
+
+function applyCroppedImage(file: File) {
+  imageFile.value = file;
+  imageUrl.value = "";
+  imagePreview.value = URL.createObjectURL(file);
+  closeCropper();
 }
 
 function handleSubmit() {
@@ -245,7 +278,7 @@ function handleSubmit() {
 
     <div class="upload-head">
       <span class="section-title">Upload image</span>
-      <span class="hint">JPG, PNG (5MB)</span>
+      <span class="hint">JPG, PNG (8MB, cropped and resized)</span>
     </div>
 
     <div class="upload-box">
@@ -283,6 +316,7 @@ function handleSubmit() {
       <input
         v-model="imageUrl"
         type="text"
+        maxlength="500"
         placeholder="Paste an image URL (optional)"
       />
     </div>
@@ -377,9 +411,9 @@ function handleSubmit() {
           <i class="pi pi-trash"></i>
         </button>
 
-        <input v-model="ingredient.qty" placeholder="Qty" />
-        <input v-model="ingredient.measurement" placeholder="Measurement" />
-        <input v-model="ingredient.item" placeholder="Item" />
+        <input v-model="ingredient.qty" maxlength="20" placeholder="Qty" />
+        <input v-model="ingredient.measurement" maxlength="30" placeholder="Measurement" />
+        <input v-model="ingredient.item" maxlength="120" placeholder="Item" />
       </div>
 
       <BaseButton variant="outline" type="button" @click="addIngredient">
@@ -446,6 +480,18 @@ function handleSubmit() {
         {{ loading ? "Saving..." : submitLabel }}
       </BaseButton>
     </div>
+
+    <ImageCropperModal
+      :visible="showCropper"
+      :file="pendingCropFile"
+      title="Edit recipe image"
+      confirm-label="Use photo"
+      :aspect-ratio="1"
+      :output-width="1200"
+      :output-height="1200"
+      @close="closeCropper"
+      @apply="applyCroppedImage"
+    />
   </div>
 </template>
 
@@ -496,7 +542,7 @@ function handleSubmit() {
 }
 
 .upload-box {
-  height: 140px;
+  height: 100px;
   border-radius: 16px;
   border: 2px dashed #ff724c;
   background: rgba(255, 114, 76, 0.08);
@@ -670,8 +716,9 @@ textarea {
 .preview-image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   border-radius: 16px;
+  background: #fff;
 }
 
 .image-overlay {
@@ -725,6 +772,10 @@ textarea {
 
   .title {
     font-size: 28px;
+  }
+
+  .upload-box {
+    height: 100px;
   }
 }
 </style>

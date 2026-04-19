@@ -6,6 +6,7 @@ import Joi, { type ValidationResult } from "joi";
 import { userModel } from "../models/userModel";
 import { profileModel } from "../models/profileModel";
 import { recipeModel } from "../models/recipeModel";
+import { mealPlanModel } from "../models/mealPlanModel";
 import { connect } from "../repository/database";
 import { type IUser } from "../interfaces/user";
 
@@ -19,6 +20,10 @@ function isDbUnavailableError(error: any): boolean {
     message.includes("MongoServerSelectionError")
   );
 }
+
+const USERNAME_MAX_LENGTH = 100;
+const EMAIL_MAX_LENGTH = 255;
+const PASSWORD_MAX_LENGTH = 72;
 
 export async function registerUser(req: Request, res: Response) {
   try {
@@ -179,8 +184,14 @@ export async function changeMyPassword(req: Request, res: Response) {
     const currentPassword = String(req.body?.currentPassword || "");
     const newPassword = String(req.body?.newPassword || "");
 
-    if (!currentPassword || !newPassword || newPassword.length < 6) {
-      return res.status(400).json({ error: "currentPassword and newPassword (min 6 chars) are required." });
+    if (
+      !currentPassword ||
+      !newPassword ||
+      newPassword.length < 6 ||
+      currentPassword.length > PASSWORD_MAX_LENGTH ||
+      newPassword.length > PASSWORD_MAX_LENGTH
+    ) {
+      return res.status(400).json({ error: `currentPassword and newPassword (6-${PASSWORD_MAX_LENGTH} chars) are required.` });
     }
 
     const user = await userModel.findById(authUserId);
@@ -215,6 +226,7 @@ export async function deleteMyAccount(req: Request, res: Response) {
 
     await Promise.all([
       recipeModel.deleteMany({ owner: authUserId }),
+      mealPlanModel.deleteMany({ owner: authUserId }),
       profileModel.deleteOne({ user: authUserId }),
       profileModel.updateMany({}, {
         $pull: {
@@ -277,6 +289,7 @@ export async function deleteUserByAdmin(req: Request, res: Response) {
 
     await Promise.all([
       recipeModel.deleteMany({ owner: userId }),
+      mealPlanModel.deleteMany({ owner: userId }),
       profileModel.deleteOne({ user: userId }),
       profileModel.updateMany({}, {
         $pull: {
@@ -367,9 +380,9 @@ export async function verifyAdmin(req: Request, res: Response, next: NextFunctio
 
 export function validateUserRegistrationInfo(data: IUser): ValidationResult {
   const schema = Joi.object({
-    username: Joi.string().min(2).max(255).required(),
-    email: Joi.string().email().min(6).max(255).required(),
-    password: Joi.string().min(6).max(64).required(),
+    username: Joi.string().trim().min(2).max(USERNAME_MAX_LENGTH).required(),
+    email: Joi.string().trim().email().min(6).max(EMAIL_MAX_LENGTH).required(),
+    password: Joi.string().min(6).max(PASSWORD_MAX_LENGTH).required(),
   });
 
   return schema.validate(data);
@@ -377,8 +390,8 @@ export function validateUserRegistrationInfo(data: IUser): ValidationResult {
 
 export function validateUserLoginInfo(data: IUser): ValidationResult {
   const schema = Joi.object({
-    email: Joi.string().email().min(6).max(255).required(),
-    password: Joi.string().min(6).max(64).required(),
+    email: Joi.string().trim().email().min(6).max(EMAIL_MAX_LENGTH).required(),
+    password: Joi.string().min(6).max(PASSWORD_MAX_LENGTH).required(),
   });
 
   return schema.validate(data);

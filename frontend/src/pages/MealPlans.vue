@@ -493,6 +493,7 @@ async function handleDeleteMealPlan(mealPlan: MealPlan): Promise<void> {
   display: grid;
   gap: 14px;
   justify-items: center;
+  padding: 34px 24px 38px;
 }
 
 .empty-state h3 {

@@ -10,13 +10,16 @@ import {
   getRecipesByUserId,
   getSavedRecipesByUserId,
   unfollowUserProfile,
+  uploadMyAvatar,
   updateMyProfile,
 } from "../controllers/profileController";
+import { uploadAvatarPhoto } from "../middleware/avatarUpload";
 
 const router = Router();
 
 router.get("/me", verifyToken, getMyProfile);
 router.put("/me", verifyToken, updateMyProfile);
+router.post("/me/avatar", verifyToken, uploadAvatarPhoto.single("avatar"), uploadMyAvatar);
 router.get("/me/saved", verifyToken, getMySavedRecipes);
 
 router.get("/:userId", getProfileByUserId);

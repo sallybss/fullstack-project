@@ -15,6 +15,12 @@ function validateMealPlan(mealPlan: NewMealPlan): void {
   if (!mealPlan.name.trim()) {
     throw new Error("Meal plan name is required");
   }
+  if (mealPlan.name.trim().length > 80) {
+    throw new Error("Meal plan name must be at most 80 characters");
+  }
+  if (mealPlan.weekLabel.trim().length > 80) {
+    throw new Error("Meal plan label must be at most 80 characters");
+  }
 }
 
 export const useMealPlans = () => {

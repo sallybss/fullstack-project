@@ -59,6 +59,11 @@ const activeTotal = computed(() =>
     : totalSavedRecipes.value,
 );
 const isAdmin = computed(() => user.value?.role === "admin");
+const avatarSrc = computed(() => {
+  const value = profile.value?.avatarUrl || user.value?.avatarUrl || "";
+  if (!value) return "";
+  return value.startsWith("http") ? value : `${API_URL}${value}`;
+});
 
 const memberSince = computed(() => {
   if (!user.value?.createdAt) return "Recently joined";
@@ -197,7 +202,10 @@ async function handleToggleSave(recipeId: string) {
 
         <div class="header">
           <div class="left">
-            <div class="avatar">{{ initials }}</div>
+            <div class="avatar">
+              <img v-if="avatarSrc" :src="avatarSrc" alt="Profile avatar" class="avatarImage" />
+              <span v-else>{{ initials }}</span>
+            </div>
 
             <div class="meta">
               <h1 class="name">{{ user?.username || "User" }}</h1>
@@ -379,6 +387,14 @@ async function handleToggleSave(recipeId: string) {
   place-items: center;
   font-weight: 800;
   color: #333;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .meta {

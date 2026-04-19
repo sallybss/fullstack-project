@@ -51,11 +51,14 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   }
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
-      return res.status(400).json({ error: "photo file is too large (max 5MB)" });
+      return res.status(400).json({ error: "image file is too large (max 8MB)" });
     }
     return res.status(400).json({ error: err.message });
   }
   if (typeof err?.message === "string" && err.message.includes("photo must be a JPG or PNG image")) {
+    return res.status(400).json({ error: err.message });
+  }
+  if (typeof err?.message === "string" && err.message.includes("Avatar image must be")) {
     return res.status(400).json({ error: err.message });
   }
   if (err) {

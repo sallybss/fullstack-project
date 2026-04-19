@@ -1,24 +1,14 @@
 import type { MealPlan, NewMealPlan } from "../interfaces/mealPlan";
 
-const STORAGE_KEY = "mealPlans";
+const API_URL = import.meta.env.VITE_API_URL;
+const LEGACY_STORAGE_KEY = "mealPlans";
 
-// reads plas from local storage, gives error if empty
-function readMealPlans(): MealPlan[] {
-  const storedMealPlans = localStorage.getItem(STORAGE_KEY);
-
-  if (!storedMealPlans) {
-    return [];
+function getAuthToken(): string {
+  const token = localStorage.getItem("lsToken");
+  if (!token) {
+    throw new Error("Authentication token missing");
   }
-
-  try {
-    return JSON.parse(storedMealPlans) as MealPlan[];
-  } catch {
-    return [];
-  }
-}
-
-function saveMealPlans(mealPlans: MealPlan[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(mealPlans));
+  return token;
 }
 
 function normalizeDayMeals(value: unknown) {
@@ -54,8 +44,8 @@ function normalizeDayMeals(value: unknown) {
   };
 }
 
-function normalizeMealPlans(mealPlans: MealPlan[]): MealPlan[] {
-  return mealPlans.map((mealPlan) => ({
+function normalizeMealPlan(mealPlan: MealPlan): MealPlan {
+  return {
     ...mealPlan,
     days: {
       monday: normalizeDayMeals(mealPlan.days?.monday),
@@ -66,81 +56,105 @@ function normalizeMealPlans(mealPlans: MealPlan[]): MealPlan[] {
       saturday: normalizeDayMeals(mealPlan.days?.saturday),
       sunday: normalizeDayMeals(mealPlan.days?.sunday),
     },
-  }));
+  };
 }
 
-function generateMealPlanId(): string {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+function normalizeMealPlans(mealPlans: MealPlan[]): MealPlan[] {
+  return mealPlans.map(normalizeMealPlan);
 }
 
-//Promise represents futere data and we waiting for fata before using it
+function readLegacyMealPlans(): MealPlan[] {
+  const storedMealPlans = localStorage.getItem(LEGACY_STORAGE_KEY);
+  if (!storedMealPlans) return [];
+
+  try {
+    return normalizeMealPlans(JSON.parse(storedMealPlans) as MealPlan[]);
+  } catch {
+    return [];
+  }
+}
+
+function clearLegacyMealPlans(): void {
+  localStorage.removeItem(LEGACY_STORAGE_KEY);
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getAuthToken();
+  const response = await fetch(`${API_URL}/api/meal-plans${path}`, {
+    ...init,
+    headers: {
+      "auth-token": token,
+      ...(init?.headers ?? {}),
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error((await response.text()) || "Meal plan request failed");
+  }
+
+  const payload = await response.json();
+  return payload.data as T;
+}
+
+async function migrateLegacyMealPlans(existing: MealPlan[]): Promise<MealPlan[]> {
+  if (existing.length > 0) {
+    clearLegacyMealPlans();
+    return existing;
+  }
+
+  const legacyMealPlans = readLegacyMealPlans();
+  if (legacyMealPlans.length === 0) {
+    return existing;
+  }
+
+  const migrated: MealPlan[] = [];
+  for (const mealPlan of legacyMealPlans) {
+    const created = await addMealPlan({
+      name: mealPlan.name,
+      weekLabel: mealPlan.weekLabel,
+      days: mealPlan.days,
+    });
+    migrated.push(created);
+  }
+
+  clearLegacyMealPlans();
+  return migrated.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
 export async function fetchMealPlans(): Promise<MealPlan[]> {
-  return normalizeMealPlans(readMealPlans()).sort((a, b) =>
-    b.createdAt.localeCompare(a.createdAt),
-  );
+  const mealPlans = normalizeMealPlans(await request<MealPlan[]>(""));
+  return migrateLegacyMealPlans(mealPlans);
 }
 
 export async function addMealPlan(mealPlanData: NewMealPlan): Promise<MealPlan> {
-  const mealPlans = readMealPlans();
-  const now = new Date().toISOString();
-
-  const newMealPlan: MealPlan = {
-    id: generateMealPlanId(),
-    name: mealPlanData.name,
-    weekLabel: mealPlanData.weekLabel,
-    days: {
-      monday: { ...mealPlanData.days.monday },
-      tuesday: { ...mealPlanData.days.tuesday },
-      wednesday: { ...mealPlanData.days.wednesday },
-      thursday: { ...mealPlanData.days.thursday },
-      friday: { ...mealPlanData.days.friday },
-      saturday: { ...mealPlanData.days.saturday },
-      sunday: { ...mealPlanData.days.sunday },
-    },
-    createdAt: now,
-    updatedAt: now,
-  };
-
-  mealPlans.unshift(newMealPlan);
-  saveMealPlans(mealPlans);
-
-  return newMealPlan;
+  return normalizeMealPlan(
+    await request<MealPlan>("", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(mealPlanData),
+    }),
+  );
 }
 
 export async function editMealPlan(
   mealPlanId: string,
   mealPlanData: NewMealPlan,
 ): Promise<MealPlan> {
-  const mealPlans = readMealPlans();
-  const mealPlanIndex = mealPlans.findIndex((mealPlan) => mealPlan.id === mealPlanId);
-
-  if (mealPlanIndex === -1) {
-    throw new Error("Meal plan not found");
-  }
-
-  const updatedMealPlan: MealPlan = {
-    ...mealPlans[mealPlanIndex],
-    name: mealPlanData.name,
-    weekLabel: mealPlanData.weekLabel,
-    days: {
-      monday: { ...mealPlanData.days.monday },
-      tuesday: { ...mealPlanData.days.tuesday },
-      wednesday: { ...mealPlanData.days.wednesday },
-      thursday: { ...mealPlanData.days.thursday },
-      friday: { ...mealPlanData.days.friday },
-      saturday: { ...mealPlanData.days.saturday },
-      sunday: { ...mealPlanData.days.sunday },
-    },
-    updatedAt: new Date().toISOString(),
-  };
-
-  mealPlans[mealPlanIndex] = updatedMealPlan;
-  saveMealPlans(mealPlans);
-
-  return updatedMealPlan;
+  return normalizeMealPlan(
+    await request<MealPlan>(`/${mealPlanId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(mealPlanData),
+    }),
+  );
 }
 
 export async function deleteMealPlan(mealPlanId: string): Promise<void> {
-  const mealPlans = readMealPlans().filter((mealPlan) => mealPlan.id !== mealPlanId);
-  saveMealPlans(mealPlans);
+  await request<{ id: string }>(`/${mealPlanId}`, {
+    method: "DELETE",
+  });
 }

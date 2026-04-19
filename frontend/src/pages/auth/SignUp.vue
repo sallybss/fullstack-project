@@ -8,25 +8,33 @@
 
       <form class="auth__form" @submit.prevent="onSubmit">
         <label class="auth__label">
-          Name
+          <div class="auth__fieldHead">
+            <span>Name</span>
+            <span class="auth__counter">{{ name.length }}/100</span>
+          </div>
           <input
             v-model="name"            
             class="auth__input"
             type="text"
             placeholder="Your name"
             autocomplete="name"
+            maxlength="100"
             required
           />
         </label>
 
         <label class="auth__label">
-          Email
+          <div class="auth__fieldHead">
+            <span>Email</span>
+            <span class="auth__counter">{{ email.length }}/255</span>
+          </div>
           <input
             v-model="email"
             class="auth__input"
             type="email"
             placeholder="you@email.com"
             autocomplete="email"
+            maxlength="255"
             required
           />
         </label>
@@ -41,6 +49,7 @@
             autocomplete="new-password"
             required
             minlength="6"
+            maxlength="72"
           />
         </label>
 
@@ -54,6 +63,7 @@
             autocomplete="new-password"
             required
             minlength="6"
+            maxlength="72"
           />
         </label>
 
@@ -169,6 +179,18 @@ async function onSubmit() {
   gap: 8px;
   font-size: 14px;
   color: var(--text);
+}
+
+.auth__fieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth__counter {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
 }
 
 .auth__input {

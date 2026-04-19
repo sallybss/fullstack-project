@@ -66,6 +66,13 @@ function initialsForUser(entry: User) {
     .toUpperCase();
 }
 
+function avatarSrc(entry: User) {
+  if (!entry.avatarUrl) return "";
+  return entry.avatarUrl.startsWith("http")
+    ? entry.avatarUrl
+    : `${import.meta.env.VITE_API_URL}${entry.avatarUrl}`;
+}
+
 watch(search, () => {
   resetPage();
 });
@@ -192,7 +199,15 @@ function viewPosts(id: string) {
               <tr v-for="entry in pagedUsers" :key="entry._id">
                 <td>
                   <div class="userCell">
-                    <div class="avatar">{{ initialsForUser(entry) }}</div>
+                    <div class="avatar">
+                      <img
+                        v-if="avatarSrc(entry)"
+                        :src="avatarSrc(entry)"
+                        alt="User avatar"
+                        class="avatarImage"
+                      />
+                      <span v-else>{{ initialsForUser(entry) }}</span>
+                    </div>
                     <div>
                       <div class="userName">{{ entry.username }}</div>
                       <div class="userEmail">{{ entry.email }}</div>
@@ -405,6 +420,14 @@ function viewPosts(id: string) {
   background: #f1f1f6;
   color: #333;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .userName {

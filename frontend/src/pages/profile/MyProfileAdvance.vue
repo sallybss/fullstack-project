@@ -5,15 +5,19 @@ import { useRouter } from "vue-router";
 import HeroSection from "../../components/common/HeroSection.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
+import ImageCropperModal from "../../components/common/ImageCropperModal.vue";
+import { validateImageDimensions } from "../../composables/useImageValidation";
 import { useUser } from "../../modules/auth/useUser";
 
 const router = useRouter();
+const API_URL = import.meta.env.VITE_API_URL;
 const {
   user,
   profile,
   error,
   fetchCurrentUser,
   updateProfile,
+  uploadAvatar,
   updatePassword,
   deleteAccount,
 } = useUser();
@@ -30,7 +34,19 @@ const showPasswords = ref(false);
 const profileMessage = ref("");
 const passwordMessage = ref("");
 const passwordError = ref("");
+const avatarError = ref("");
+const avatarUploadMessage = ref("");
+const isUploadingAvatar = ref(false);
+const avatarInput = ref<HTMLInputElement | null>(null);
+const pendingAvatarFile = ref<File | null>(null);
+const showAvatarCropper = ref(false);
 const isAdmin = computed(() => user.value?.role === "admin");
+
+const avatarSrc = computed(() => {
+  const value = profile.value?.avatarUrl || user.value?.avatarUrl || avatarUrl.value;
+  if (!value) return "";
+  return value.startsWith("http") ? value : `${API_URL}${value}`;
+});
 
 const initials = computed(() => {
   const username = user.value?.username || "User";
@@ -69,6 +85,71 @@ async function savePersonalInfo() {
 function cancelPersonalInfo() {
   profileMessage.value = "";
   resetFields();
+}
+
+async function openAvatarPicker() {
+  avatarInput.value?.click();
+}
+
+async function onAvatarSelected(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0];
+  if (!file) return;
+
+  avatarError.value = "";
+  avatarUploadMessage.value = "";
+
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    avatarError.value = "Only JPG, PNG, or WebP images are allowed.";
+    return;
+  }
+
+  if (file.size > 8 * 1024 * 1024) {
+    avatarError.value = "Image must be under 8 MB.";
+    return;
+  }
+
+  try {
+    await validateImageDimensions(
+      file,
+      {
+        minWidth: 300,
+        minHeight: 300,
+        maxWidth: 8000,
+        maxHeight: 8000,
+      },
+      "Profile image",
+    );
+
+    pendingAvatarFile.value = file;
+    showAvatarCropper.value = true;
+  } catch (err) {
+    avatarError.value = (err as Error).message || "Invalid image.";
+  } finally {
+    if (avatarInput.value) avatarInput.value.value = "";
+  }
+}
+
+function closeAvatarCropper() {
+  showAvatarCropper.value = false;
+  pendingAvatarFile.value = null;
+}
+
+async function applyAvatarCrop(file: File) {
+  showAvatarCropper.value = false;
+  pendingAvatarFile.value = null;
+  avatarError.value = "";
+  avatarUploadMessage.value = "";
+  isUploadingAvatar.value = true;
+
+  try {
+    const updatedProfile = await uploadAvatar(file);
+    if (!updatedProfile) return;
+
+    avatarUrl.value = updatedProfile.avatarUrl || "";
+    avatarUploadMessage.value = "Profile photo updated.";
+  } finally {
+    isUploadingAvatar.value = false;
+  }
 }
 
 async function submitPasswordUpdate() {
@@ -128,7 +209,10 @@ async function removeAccount() {
 
         <div class="header">
           <div class="left">
-            <div class="avatar">{{ initials }}</div>
+            <div class="avatar">
+              <img v-if="avatarSrc" :src="avatarSrc" alt="Profile avatar" class="avatarImage" />
+              <span v-else>{{ initials }}</span>
+            </div>
 
             <div class="meta">
               <h1 class="name">{{ user?.username || "User" }}</h1>
@@ -145,26 +229,66 @@ async function removeAccount() {
             </div>
           </div>
 
+          <div class="avatarPanel">
+            <div class="avatar avatar--large">
+              <img v-if="avatarSrc" :src="avatarSrc" alt="Profile avatar" class="avatarImage" />
+              <span v-else>{{ initials }}</span>
+            </div>
+
+            <div class="avatarPanel__content">
+              <h3>Profile photo</h3>
+              <p>Upload a square photo. It will be cropped, resized, and compressed automatically.</p>
+
+              <div class="avatarPanel__actions">
+                <BaseButton
+                  variant="outline"
+                  type="button"
+                  :disabled="isUploadingAvatar"
+                  @click="openAvatarPicker"
+                >
+                  {{ isUploadingAvatar ? "Uploading..." : "Change photo" }}
+                </BaseButton>
+                <span class="avatarHint">JPG, PNG, WebP · max 8 MB</span>
+              </div>
+
+              <input
+                ref="avatarInput"
+                class="avatarInput"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                @change="onAvatarSelected"
+              />
+
+              <p v-if="avatarUploadMessage" class="success">{{ avatarUploadMessage }}</p>
+              <p v-if="avatarError" class="error">{{ avatarError }}</p>
+            </div>
+          </div>
+
           <div class="formGrid">
             <div class="field">
-              <label>Full name</label>
+              <div class="fieldHead">
+                <label>Full name</label>
+                <span class="counter">{{ fullName.length }}/100</span>
+              </div>
               <input v-model="fullName" maxlength="100" type="text" />
             </div>
 
+            <div class="field">
+              <div class="fieldHead">
+                <label>Email address</label>
+                <span class="counter">{{ email.length }}/255</span>
+              </div>
+              <input v-model="email" maxlength="255" type="email" />
+            </div>
+
             <div class="field field--full">
-              <label>Bio</label>
+              <div class="fieldHead">
+                <label>Bio</label>
+                <span class="counter">{{ description.length }}/300</span>
+              </div>
               <textarea v-model="description" maxlength="300" />
             </div>
 
-            <div class="field">
-              <label>Email address</label>
-              <input v-model="email" maxlength="100" type="email" />
-            </div>
-
-            <div class="field">
-              <label>Avatar URL</label>
-              <input v-model="avatarUrl" maxlength="255" type="url" placeholder="https://..." />
-            </div>
           </div>
 
           <p v-if="profileMessage" class="success">{{ profileMessage }}</p>
@@ -192,17 +316,17 @@ async function removeAccount() {
         <div class="formGrid">
           <div class="field field--full">
             <label>Current password</label>
-            <input v-model="currentPassword" :type="showPasswords ? 'text' : 'password'" />
+            <input v-model="currentPassword" maxlength="72" :type="showPasswords ? 'text' : 'password'" />
           </div>
 
           <div class="field field--full">
             <label>New password</label>
-            <input v-model="newPassword" :type="showPasswords ? 'text' : 'password'" />
+            <input v-model="newPassword" maxlength="72" :type="showPasswords ? 'text' : 'password'" />
           </div>
 
           <div class="field field--full">
             <label>Confirm new password</label>
-            <input v-model="confirmPassword" :type="showPasswords ? 'text' : 'password'" />
+            <input v-model="confirmPassword" maxlength="72" :type="showPasswords ? 'text' : 'password'" />
           </div>
 
           <p v-if="passwordMessage" class="success">{{ passwordMessage }}</p>
@@ -239,6 +363,18 @@ async function removeAccount() {
         </div>
       </section>
     </main>
+
+    <ImageCropperModal
+      :visible="showAvatarCropper"
+      :file="pendingAvatarFile"
+      title="Edit profile photo"
+      confirm-label="Use photo"
+      :aspect-ratio="1"
+      :output-width="800"
+      :output-height="800"
+      @close="closeAvatarCropper"
+      @apply="applyAvatarCrop"
+    />
   </div>
 </template>
 
@@ -300,6 +436,20 @@ async function removeAccount() {
   color: #333;
   font-size: 22px;
   font-weight: 800;
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar--large {
+  width: 92px;
+  height: 92px;
+  font-size: 34px;
 }
 
 .meta {
@@ -329,6 +479,46 @@ async function removeAccount() {
   border: 0;
   background: transparent;
   border-radius: 0;
+}
+
+.avatarPanel {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 0 22px;
+}
+
+.avatarPanel__content {
+  display: grid;
+  gap: 8px;
+}
+
+.avatarPanel__content h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #1f1a16;
+}
+
+.avatarPanel__content p {
+  margin: 0;
+  color: #7a6d61;
+  font-size: 14px;
+}
+
+.avatarPanel__actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.avatarHint {
+  color: #a89d95;
+  font-size: 12px;
+}
+
+.avatarInput {
+  display: none;
 }
 
 .sectionHead {
@@ -365,6 +555,13 @@ async function removeAccount() {
   gap: 8px;
 }
 
+.fieldHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .field--full {
   grid-column: 1 / -1;
 }
@@ -375,6 +572,11 @@ label {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: #7a6756;
+}
+
+.counter {
+  font-size: 12px;
+  color: #a89d95;
 }
 
 input,

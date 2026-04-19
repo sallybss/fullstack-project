@@ -26,9 +26,9 @@ const routes = [
   { path: "/contact", name: "contact", component: Contact },
   { path: "/privacy-policy", name: "privacy-policy", component: PrivacyPolicy },
   { path: "/saved", name: "saved", component: SavedRecipes, meta: { requiresAuth: true } },
-  { path: "/meal-plans", name: "meal-plans", component: MealPlans },
-  { path: "/meal-plans/create", name: "meal-plans-create", component: MealPlanEditor },
-  { path: "/meal-plans/:id/edit", name: "meal-plans-edit", component: MealPlanEditor },
+  { path: "/meal-plans", name: "meal-plans", component: MealPlans, meta: { requiresAuth: true } },
+  { path: "/meal-plans/create", name: "meal-plans-create", component: MealPlanEditor, meta: { requiresAuth: true } },
+  { path: "/meal-plans/:id/edit", name: "meal-plans-edit", component: MealPlanEditor, meta: { requiresAuth: true } },
 
   { path: "/signin", name: "signin", component: SignIn, meta: { hideLayout: true } },
   { path: "/signup", name: "signup", component: SignUp, meta: { hideLayout: true } },

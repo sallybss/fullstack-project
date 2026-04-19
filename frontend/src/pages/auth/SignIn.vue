@@ -8,13 +8,17 @@
 
       <form class="auth__form" @submit.prevent="onSubmit">
         <label class="auth__label">
-          Email
+          <div class="auth__fieldHead">
+            <span>Email</span>
+            <span class="auth__counter">{{ email.length }}/255</span>
+          </div>
           <input
             v-model="email"
             class="auth__input"
             type="email"
             placeholder="you@email.com"
             autocomplete="email"
+            maxlength="255"
             required
           />
         </label>
@@ -28,6 +32,7 @@
             placeholder="••••••••"
             autocomplete="current-password"
             required
+            maxlength="72"
           />
         </label>
 
@@ -132,6 +137,18 @@ function onForgotPassword() {
   gap: 8px;
   font-size: 14px;
   color: var(--text);
+}
+
+.auth__fieldHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.auth__counter {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
 }
 
 .auth__input {

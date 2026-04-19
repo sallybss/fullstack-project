@@ -14,41 +14,83 @@ function isValidUrl(value: unknown): boolean {
   }
 }
 
+const RECIPE_TITLE_MAX_LENGTH = 100;
+const RECIPE_DESCRIPTION_MAX_LENGTH = 500;
+const RECIPE_IMAGE_URL_MAX_LENGTH = 500;
+const RECIPE_CUISINE_MAX_LENGTH = 40;
+const RECIPE_INGREDIENT_MAX_LENGTH = 200;
+const RECIPE_STEP_MAX_LENGTH = 2000;
+
 function pickRecipeBody(body: any) {
   const recipe: any = {};
 
   const parseStringArray = (value: unknown): string[] | undefined => {
-    if (Array.isArray(value)) return value.map((v) => String(v));
+    if (Array.isArray(value)) return value.map((v) => String(v).trim());
     if (typeof value !== "string") return undefined;
     const trimmed = value.trim();
     if (!trimmed) return [];
     if (trimmed.startsWith("[")) {
       try {
         const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) return parsed.map((v) => String(v));
+        if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim());
       } catch {
       }
     }
     return trimmed.split(",").map((v) => v.trim()).filter(Boolean);
   };
 
-  if (typeof body.title === "string") recipe.title = body.title;
-  if (typeof body.description === "string") recipe.description = body.description;
+  if (typeof body.title === "string") {
+    const title = body.title.trim();
+    if (!title) throw new Error("title is required");
+    if (title.length > RECIPE_TITLE_MAX_LENGTH) {
+      throw new Error(`title must be at most ${RECIPE_TITLE_MAX_LENGTH} characters`);
+    }
+    recipe.title = title;
+  }
+  if (typeof body.description === "string") {
+    const description = body.description.trim();
+    if (!description) throw new Error("description is required");
+    if (description.length > RECIPE_DESCRIPTION_MAX_LENGTH) {
+      throw new Error(`description must be at most ${RECIPE_DESCRIPTION_MAX_LENGTH} characters`);
+    }
+    recipe.description = description;
+  }
   const ingredients = parseStringArray(body.ingredients);
-  if (ingredients) recipe.ingredients = ingredients;
+  if (ingredients) {
+    if (ingredients.some((entry) => !entry)) throw new Error("ingredients cannot contain empty values");
+    if (ingredients.some((entry) => entry.length > RECIPE_INGREDIENT_MAX_LENGTH)) {
+      throw new Error(`ingredient items must be at most ${RECIPE_INGREDIENT_MAX_LENGTH} characters`);
+    }
+    recipe.ingredients = ingredients;
+  }
   const instructions = parseStringArray(body.instructions);
-  if (instructions) recipe.instructions = instructions;
-  if (typeof body.cuisine === "string") recipe.cuisine = body.cuisine;
+  if (instructions) {
+    if (instructions.some((entry) => !entry)) throw new Error("instructions cannot contain empty values");
+    if (instructions.some((entry) => entry.length > RECIPE_STEP_MAX_LENGTH)) {
+      throw new Error(`instruction steps must be at most ${RECIPE_STEP_MAX_LENGTH} characters`);
+    }
+    recipe.instructions = instructions;
+  }
+  if (typeof body.cuisine === "string") {
+    const cuisine = body.cuisine.trim();
+    if (!cuisine) throw new Error("cuisine is required");
+    if (cuisine.length > RECIPE_CUISINE_MAX_LENGTH) {
+      throw new Error(`cuisine must be at most ${RECIPE_CUISINE_MAX_LENGTH} characters`);
+    }
+    recipe.cuisine = cuisine;
+  }
   if (typeof body.isPublic === "boolean") recipe.isPublic = body.isPublic;
 
-  const rawImage = body.imageUrl ?? body.photo;
   if (body.imageUrl !== undefined) {
-  const image = String(body.imageUrl ?? "").trim();
-  if (image && !isValidUrl(image)) {
-    throw new Error("imageUrl must be a valid http/https URL");
+    const image = String(body.imageUrl ?? "").trim();
+    if (image.length > RECIPE_IMAGE_URL_MAX_LENGTH) {
+      throw new Error(`imageUrl must be at most ${RECIPE_IMAGE_URL_MAX_LENGTH} characters`);
+    }
+    if (image && !isValidUrl(image)) {
+      throw new Error("imageUrl must be a valid http/https URL");
+    }
+    recipe.imageUrl = image;
   }
-  recipe.imageUrl = image;
-}
 
   if (body.prepTimeMinutes !== undefined) {
     const prep = Number(body.prepTimeMinutes);
@@ -153,6 +195,11 @@ export async function createRecipe(req: Request, res: Response): Promise<void> {
   } catch (err: any) {
     const msg = String(err?.message || err);
     const isValidationError =
+      msg.includes("title") ||
+      msg.includes("description") ||
+      msg.includes("ingredient") ||
+      msg.includes("instruction") ||
+      msg.includes("cuisine") ||
       msg.includes("imageUrl") ||
       msg.includes("prepTimeMinutes") ||
       msg.includes("cookTimeMinutes") ||
@@ -273,9 +320,11 @@ export async function addRecipeComment(req: Request, res: Response) {
     }
 
     const username = authUser.username || "User";
+    const authUserDoc = await userModel.findById(authUser.id).select("avatarUrl");
     (recipe.comments as any).push({
       user: authUser.id,
       username,
+      avatarUrl: authUserDoc?.avatarUrl || "",
       text,
     });
 
@@ -421,6 +470,11 @@ export async function updateRecipeById(req: Request, res: Response) {
   } catch (err: any) {
     const msg = String(err?.message || err);
     const isValidationError =
+      msg.includes("title") ||
+      msg.includes("description") ||
+      msg.includes("ingredient") ||
+      msg.includes("instruction") ||
+      msg.includes("cuisine") ||
       msg.includes("imageUrl") ||
       msg.includes("prepTimeMinutes") ||
       msg.includes("cookTimeMinutes") ||
