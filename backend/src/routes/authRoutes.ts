@@ -13,11 +13,19 @@ import {
   verifyAdmin,
   verifyToken,
 } from "../controllers/authController";
+import { createLoginRateLimiter } from "../middleware/rateLimit";
 
 const router = Router();
 
+const loginRateLimiter = createLoginRateLimiter({
+  keyPrefix: "auth-login",
+  windowMs: 5 * 60 * 1000,
+  maxRequests: 2,
+  message: "Too many login attempts. Please wait 5 minutes before trying again.",
+});
+
 router.post("/register", registerUser);
-router.post("/login", loginUser);
+router.post("/login", loginRateLimiter, loginUser);
 router.post("/forgot-password", requestPasswordReset);
 router.post("/reset-password", resetPasswordWithToken);
 router.get("/me", verifyToken, getCurrentUser);
