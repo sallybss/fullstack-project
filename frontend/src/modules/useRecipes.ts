@@ -5,6 +5,18 @@ const recipes = ref<Recipe[]>([]);
 const loading = ref<boolean>(false);
 const error = ref<string | null>(null);
 
+async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+  const raw = await response.text();
+  if (!raw) return fallback;
+
+  try {
+    const parsed = JSON.parse(raw) as { error?: string; message?: string };
+    return parsed.error || parsed.message || fallback;
+  } catch {
+    return raw;
+  }
+}
+
 function getTokenAndUserId(): { token: string; userId: string } {
   const token = localStorage.getItem("lsToken");
   const userId = localStorage.getItem("userIDToken");
@@ -166,7 +178,7 @@ export const useRecipes = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to update saved recipe");
+        throw new Error(await readErrorMessage(response, "Failed to update saved recipe"));
       }
     } catch (err) {
       recipe.saved = previous;
@@ -189,7 +201,7 @@ export const useRecipes = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to add recipe.");
+        throw new Error(await readErrorMessage(response, "Failed to add recipe."));
       }
 
       const createdRecipe: Recipe = await response.json();
@@ -220,7 +232,7 @@ export const useRecipes = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to update recipe");
+        throw new Error(await readErrorMessage(response, "Failed to update recipe"));
       }
 
       const updatedRecipe: Recipe = await response.json();
@@ -250,7 +262,7 @@ export const useRecipes = () => {
       });
 
       if (!response.ok) {
-        throw new Error((await response.text()) || "Failed to delete recipe");
+        throw new Error(await readErrorMessage(response, "Failed to delete recipe"));
       }
 
       recipes.value = recipes.value.filter((recipe) => recipe._id !== id);
@@ -263,7 +275,7 @@ export const useRecipes = () => {
     const response = await fetch(`${API_URL}/api/recipes/${recipeId}/comments`);
 
     if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to fetch comments");
+      throw new Error(await readErrorMessage(response, "Failed to fetch comments"));
     }
 
     const payload = await response.json();
@@ -285,7 +297,7 @@ export const useRecipes = () => {
     });
 
     if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to add comment");
+      throw new Error(await readErrorMessage(response, "Failed to add comment"));
     }
 
     const payload = await response.json();
@@ -302,7 +314,7 @@ export const useRecipes = () => {
     });
 
     if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to delete comment");
+      throw new Error(await readErrorMessage(response, "Failed to delete comment"));
     }
   };
 
@@ -322,7 +334,7 @@ export const useRecipes = () => {
     });
 
     if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to update comment");
+      throw new Error(await readErrorMessage(response, "Failed to update comment"));
     }
 
     const payload = await response.json();
@@ -341,7 +353,7 @@ export const useRecipes = () => {
     });
 
     if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to rate recipe");
+      throw new Error(await readErrorMessage(response, "Failed to rate recipe"));
     }
 
     const payload = await response.json();

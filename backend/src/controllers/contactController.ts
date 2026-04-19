@@ -10,9 +10,6 @@ const contactSchema = Joi.object({
 });
 
 let transporter: nodemailer.Transporter | null = null;
-const contactAttempts = new Map<string, number[]>();
-const CONTACT_WINDOW_MS = 60 * 60 * 1000;
-const CONTACT_MAX_ATTEMPTS = 2;
 
 function getTransporter() {
   if (!transporter) {
@@ -30,13 +27,6 @@ function getTransporter() {
 
 export async function submitContactMessage(req: Request, res: Response) {
   try {
-    const clientIp = getClientIp(req);
-    if (!allowContactAttempt(clientIp)) {
-      return res.status(429).json({
-        error: "Too many contact requests from this address. Please try again later.",
-      });
-    }
-
     const { error, value } = contactSchema.validate(req.body);
     if (error) {
       return res.status(400).json({ error: error.details[0]?.message || "Invalid contact form data" });
@@ -84,29 +74,4 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function getClientIp(req: Request): string {
-  const forwarded = req.headers["x-forwarded-for"];
-  if (typeof forwarded === "string" && forwarded.trim()) {
-    return forwarded.split(",")[0]?.trim() || "unknown";
-  }
-
-  return req.ip || req.socket.remoteAddress || "unknown";
-}
-
-function allowContactAttempt(clientIp: string): boolean {
-  const now = Date.now();
-  const recentAttempts = (contactAttempts.get(clientIp) || []).filter(
-    (timestamp) => now - timestamp < CONTACT_WINDOW_MS,
-  );
-
-  if (recentAttempts.length >= CONTACT_MAX_ATTEMPTS) {
-    contactAttempts.set(clientIp, recentAttempts);
-    return false;
-  }
-
-  recentAttempts.push(now);
-  contactAttempts.set(clientIp, recentAttempts);
-  return true;
 }
