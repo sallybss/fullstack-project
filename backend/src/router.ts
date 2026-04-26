@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import recipeRoutes from "./routes/recipeRoutes";
 import authRoutes from "./routes/authRoutes";
+import chatRoutes from "./routes/chatRoutes";
 import profileRoutes from "./routes/profileRoutes";
 import contactRoutes from "./routes/contactRoutes";
 import siteSettingsRoutes from "./routes/siteSettingsRoutes";
@@ -80,6 +81,53 @@ router.get("/", (_req: Request, res: Response) => {
  *         description: Login success (token returned)
  *       400:
  *         description: Invalid credentials/validation error
+ *
+ * /auth/forgot-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Request password reset
+ *     description: Sends a password reset email if the account exists.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: "sali@test.com"
+ *     responses:
+ *       200:
+ *         description: Reset request accepted
+ *       400:
+ *         description: Validation error
+ *
+ * /auth/reset-password:
+ *   post:
+ *     tags: [Auth]
+ *     summary: Reset password with token
+ *     description: Resets a password using the token received from the forgot-password flow.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 example: "reset-token"
+ *               password:
+ *                 type: string
+ *                 example: "newSecurePassword123"
+ *     responses:
+ *       200:
+ *         description: Password reset successful
+ *       400:
+ *         description: Invalid or expired reset token
  *
  * /auth/users:
  *   get:
@@ -212,6 +260,43 @@ router.get("/", (_req: Request, res: Response) => {
  *         description: User not found
  */
 router.use("/auth", authRoutes);
+
+/**
+ * @swagger
+ * /chat:
+ *   post:
+ *     tags: [AI Chat]
+ *     summary: Send a message to Cooking Genie
+ *     description: Sends a user message to the AI recipe assistant powered by OpenAI `gpt-5-nano`.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [message]
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 maxLength: 1000
+ *                 example: "What can I use instead of eggs in pancakes?"
+ *     responses:
+ *       200:
+ *         description: Assistant reply returned
+ *         content:
+ *           application/json:
+ *             example:
+ *               error: null
+ *               data:
+ *                 reply: "You can use mashed banana, applesauce, or a flax egg in pancakes."
+ *       400:
+ *         description: Validation error
+ *       500:
+ *         description: OpenAI API key is not configured or the AI request failed
+ *       502:
+ *         description: The assistant returned an empty response
+ */
+router.use("/chat", chatRoutes);
 router.use("/profiles", profileRoutes);
 router.use("/settings", siteSettingsRoutes);
 router.use("/meal-plans", mealPlanRoutes);

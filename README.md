@@ -17,6 +17,7 @@ A full-stack recipe platform where users can discover, create and manage recipes
 - **Favorites** — Save and manage a personal collection of recipes
 - **Ratings & Comments** — Rate recipes and leave comments
 - **User Profiles** — View your recipes, follow other users and explore their saved content
+- **Cooking Genie Chatbot** — A floating AI recipe assistant available across the app for meal ideas, substitutions, and quick cooking help
 
 ---
 
@@ -28,6 +29,7 @@ A full-stack recipe platform where users can discover, create and manage recipes
 | Backend | Node.js, Express 5, TypeScript |
 | Database | MongoDB, Mongoose |
 | Auth | JWT |
+| AI | OpenAI Responses API (`gpt-5-nano`) |
 | File Upload | Multer |
 | API Docs | Swagger (swagger-jsdoc + swagger-ui-express) |
 | Testing | Vitest |
@@ -80,6 +82,7 @@ Create a `.env` file in the `backend/` directory:
 PORT=4000
 DBHOST=<your-mongodb-connection-string>
 TOKEN_SECRET=<your-jwt-secret>
+OPENAI_API_KEY=<your-openai-api-key>
 ```
 
 ### 3. Install dependencies and run
@@ -99,6 +102,23 @@ npm run dev
 ```
 
 The frontend will be available at `http://localhost:5173` and the API at `http://localhost:4000`.
+
+### 4. Configure the AI chatbot
+
+The app includes a global floating chatbot called **Cooking Genie**. It uses OpenAI's `gpt-5-nano` model through the backend, so the API key must stay server-side.
+
+What it does:
+
+- Suggests recipe ideas based on ingredients
+- Recommends ingredient substitutions
+- Answers simple cooking questions
+
+Implementation notes:
+
+- Frontend widget: available across normal app pages
+- Backend endpoint: `POST /api/chat`
+- Model: `gpt-5-nano`
+- Cost controls: low verbosity, minimal reasoning, limited output tokens
 
 ---
 
@@ -130,6 +150,11 @@ All routes are prefixed with `/api`. Full interactive documentation is available
 | GET/PUT | `/profiles/me` | ✓ | View/update your profile |
 | GET | `/profiles/:userId` | | View a user's profile |
 | POST/DELETE | `/profiles/:userId/follow` | ✓ | Follow/unfollow a user |
+
+### AI Chat
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/chat` | Send a message to the Cooking Genie chatbot |
 
 ---
 
