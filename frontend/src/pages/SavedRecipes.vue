@@ -47,38 +47,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import HeroSection from "../components/common/HeroSection.vue";
 import PaginationBar from "../components/common/PaginationBar.vue";
 import CategoryChips from "../components/home/CategoryChips.vue";
 import RecipeGrid from "../components/recipes/RecipeGrid.vue";
 import RecipeCard from "../components/recipes/RecipeCard.vue";
 import { usePagination } from "../composables/usePagination";
+import { useResponsivePageSize } from "../composables/useResponsivePageSize";
 import { useRecipes } from "../modules/useRecipes";
 
 const { recipes, fetchRecipes, toggleSave } = useRecipes();
 const selectedCategory = ref("All");
-const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
 const categoryChips = ["All", "Breakfast", "Lunch", "Dinner", "Dessert"];
 
-const pageSize = computed(() => {
-  if (viewportWidth.value <= 820) return 6;
-  if (viewportWidth.value <= 1100) return 9;
-  return 12;
-});
-const handleResize = () => {
-  viewportWidth.value = window.innerWidth;
-};
+const { pageSize } = useResponsivePageSize([
+  { maxWidth: 820, pageSize: 6 },
+  { maxWidth: 1100, pageSize: 9 },
+], 12);
 
 onMounted(() => {
-  window.addEventListener("resize", handleResize);
   if (recipes.value.length === 0) {
     fetchRecipes();
   }
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", handleResize);
 });
 
 const savedRecipes = computed(() => {

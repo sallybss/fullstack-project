@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
 import { useRecipes } from "../modules/useRecipes";
@@ -104,36 +104,27 @@ import RecipeGrid from "../components/recipes/RecipeGrid.vue";
 import RecipeCard from "../components/recipes/RecipeCard.vue";
 import BaseButton from "../components/common/BaseButton.vue";
 import { usePagination } from "../composables/usePagination";
+import { useResponsivePageSize } from "../composables/useResponsivePageSize";
 
 const router = useRouter();
 
 const query = ref("");
 const showAuthModal = ref(false);
 const selectedCategory = ref("All");
-const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
 
 const categoryChips = ["All", "Breakfast", "Lunch", "Dinner", "Dessert"];
 
 const { recipes, loading, error, fetchRecipes, toggleSave } = useRecipes();
 const { isLoggedIn } = useUser();
 
-const pageSize = computed(() => {
-  if (viewportWidth.value <= 820) return 6;
-  if (viewportWidth.value <= 1100) return 9;
-  return 12;
-});
+const { pageSize } = useResponsivePageSize([
+  { maxWidth: 820, pageSize: 6 },
+  { maxWidth: 1100, pageSize: 9 },
+], 12);
 const { page, pagedItems: pagedRecipes, resetPage } = usePagination(recipes, pageSize);
-const handleResize = () => {
-  viewportWidth.value = window.innerWidth;
-};
 
 onMounted(() => {
-  window.addEventListener("resize", handleResize);
   fetchRecipes();
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", handleResize);
 });
 
 let searchTimeout: number | undefined;

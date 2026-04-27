@@ -1,17 +1,26 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
 import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
+import PeopleModal from "../../components/profile/PeopleModal.vue";
 import AdvancedRecipeCard from "../../components/recipes/AdvancedRecipeCard.vue";
 import { usePagination } from "../../composables/usePagination";
+import { useResponsivePageSize } from "../../composables/useResponsivePageSize";
 
 import { useRecipes } from "../../modules/useRecipes";
 import { useUser } from "../../modules/auth/useUser";
 import type { Recipe } from "../../interfaces/recipe";
+import {
+  fetchMySavedRecipes,
+  fetchProfileFollowers,
+  fetchProfileFollowing,
+  fetchProfileRecipes,
+  type ProfilePerson,
+} from "../../services/profileService";
 
 const router = useRouter();
 const API_URL = import.meta.env.VITE_API_URL;
@@ -19,21 +28,16 @@ const API_URL = import.meta.env.VITE_API_URL;
 const { error, toggleSave, deleteRecipe } = useRecipes();
 const { user, profile, fetchCurrentUser } = useUser();
 
-const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
-const pageSize = computed(() => {
-  if (viewportWidth.value <= 520) return 4;
-  if (viewportWidth.value <= 900) return 6;
-  if (viewportWidth.value <= 1100) return 9;
-  return 12;
-});
-const handleResize = () => {
-  viewportWidth.value = window.innerWidth;
-};
+const { pageSize } = useResponsivePageSize([
+  { maxWidth: 520, pageSize: 4 },
+  { maxWidth: 900, pageSize: 6 },
+  { maxWidth: 1100, pageSize: 9 },
+], 12);
 const loadingRecipes = ref(true);
 const myRecipes = ref<Recipe[]>([]);
 const savedRecipes = ref<Recipe[]>([]);
-const followers = ref<Array<{ _id: string; username: string }>>([]);
-const following = ref<Array<{ _id: string; username: string }>>([]);
+const followers = ref<ProfilePerson[]>([]);
+const following = ref<ProfilePerson[]>([]);
 const activeSection = ref<"posts" | "saved">("posts");
 const peopleModal = ref<"followers" | "following" | null>(null);
 
@@ -93,13 +97,8 @@ const initials = computed(() => {
 });
 
 onMounted(async () => {
-  window.addEventListener("resize", handleResize);
   await fetchCurrentUser();
   await Promise.all([loadMyRecipes(), loadSavedRecipes(), loadConnections()]);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", handleResize);
 });
 
 function editRecipe(id: string) {
@@ -131,14 +130,7 @@ async function loadMyRecipes() {
 
   try {
     loadingRecipes.value = true;
-
-    const response = await fetch(`${API_URL}/api/profiles/${user.value._id}/recipes`);
-    if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to fetch your recipes");
-    }
-
-    const payload = await response.json();
-    myRecipes.value = payload.data ?? [];
+    myRecipes.value = await fetchProfileRecipes(user.value._id);
   } finally {
     loadingRecipes.value = false;
   }
@@ -147,38 +139,19 @@ async function loadMyRecipes() {
 async function loadConnections() {
   if (!user.value?._id) return;
 
-  const [followersResponse, followingResponse] = await Promise.all([
-    fetch(`${API_URL}/api/profiles/${user.value._id}/followers`),
-    fetch(`${API_URL}/api/profiles/${user.value._id}/following`),
-  ]);
-
-  if (!followersResponse.ok || !followingResponse.ok) {
-    return;
-  }
-
   const [followersPayload, followingPayload] = await Promise.all([
-    followersResponse.json(),
-    followingResponse.json(),
+    fetchProfileFollowers(user.value._id),
+    fetchProfileFollowing(user.value._id),
   ]);
 
-  followers.value = followersPayload.data ?? [];
-  following.value = followingPayload.data ?? [];
+  followers.value = followersPayload;
+  following.value = followingPayload;
 }
 
 async function loadSavedRecipes() {
   try {
-    const response = await fetch(`${API_URL}/api/profiles/me/saved`, {
-      headers: {
-        "auth-token": localStorage.getItem("lsToken") || "",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to fetch saved recipes");
-    }
-
-    const payload = await response.json();
-    savedRecipes.value = (payload.data ?? []).map((recipe: Recipe) => ({
+    const payload = await fetchMySavedRecipes(localStorage.getItem("lsToken") || "");
+    savedRecipes.value = payload.map((recipe: Recipe) => ({
       ...recipe,
       saved: true,
     }));
@@ -316,38 +289,12 @@ async function handleToggleSave(recipeId: string) {
         </div>
       </div>
     </main>
-
-    <div
+    <PeopleModal
       v-if="peopleModal"
-      class="people-modal-overlay"
-      @click.self="closePeopleModal"
-    >
-      <div class="people-modal">
-        <div class="people-modal__head">
-          <h2>{{ peopleModal === "followers" ? "Followers" : "Following" }}</h2>
-          <button class="people-modal__close" type="button" @click="closePeopleModal">×</button>
-        </div>
-
-        <p
-          v-if="(peopleModal === 'followers' ? followers : following).length === 0"
-          class="list-empty"
-        >
-          {{ peopleModal === "followers" ? "No followers yet." : "Not following anyone yet." }}
-        </p>
-
-        <div v-else class="people-list">
-          <button
-            v-for="person in (peopleModal === 'followers' ? followers : following)"
-            :key="person._id"
-            class="people-row"
-            type="button"
-            @click="router.push({ name: 'profile', params: { id: person._id } }); closePeopleModal();"
-          >
-            {{ person.username }}
-          </button>
-        </div>
-      </div>
-    </div>
+      :type="peopleModal"
+      :people="peopleModal === 'followers' ? followers : following"
+      @close="closePeopleModal"
+    />
   </div>
 </template>
 
@@ -505,57 +452,6 @@ async function handleToggleSave(recipeId: string) {
   display: flex;
   justify-content: center;
   margin-top: 18px;
-}
-
-.people-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: grid;
-  place-items: center;
-  z-index: 30;
-}
-
-.people-modal {
-  width: min(460px, 92vw);
-  max-height: min(70vh, 640px);
-  overflow: auto;
-  background: white;
-  border-radius: 24px;
-  padding: 20px;
-}
-
-.people-modal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.people-modal__head h2 {
-  margin: 0;
-}
-
-.people-modal__close {
-  border: 0;
-  background: transparent;
-  font-size: 26px;
-  cursor: pointer;
-}
-
-.people-list {
-  margin-top: 16px;
-  display: grid;
-  gap: 10px;
-}
-
-.people-row {
-  border: 1px solid #ececec;
-  background: #fafafa;
-  border-radius: 16px;
-  padding: 14px 16px;
-  text-align: left;
-  cursor: pointer;
 }
 
 @media (max-width: 1100px) {

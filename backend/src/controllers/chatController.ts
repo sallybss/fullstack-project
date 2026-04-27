@@ -56,7 +56,8 @@ export async function chatWithAssistant(req: Request, res: Response) {
 
     const openai = getOpenAIClient();
     if (!openai) {
-      return res.status(500).json({ error: "OpenAI API key is not configured on the server." });
+      console.error("chatWithAssistant failed: OpenAI API key is not configured.");
+      return res.status(500).json({ error: "Something went wrong. Please try again later." });
     }
 
     const response = await openai.responses.create({

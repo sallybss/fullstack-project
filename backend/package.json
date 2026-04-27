@@ -27,7 +27,7 @@
       ".cache/**",
       ".ts-node/**"
     ],
-    "delay": "800",
+    "delay": 800,
     "legacyWatch": true,
     "exec": "ts-node --transpile-only ./src/index.ts"
   },

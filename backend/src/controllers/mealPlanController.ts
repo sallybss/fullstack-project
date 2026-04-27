@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 
 import { connect } from "../repository/database";
 import { mealPlanModel } from "../models/mealPlanModel";
+import { sendInternalError } from "../util/httpResponses";
 
 const MEAL_PLAN_NAME_MAX_LENGTH = 80;
 const MEAL_PLAN_LABEL_MAX_LENGTH = 80;
@@ -112,7 +113,7 @@ export async function getMyMealPlans(req: Request, res: Response) {
     const mealPlans = await mealPlanModel.find({ owner }).sort({ createdAt: -1 });
     res.status(200).json({ error: null, data: mealPlans.map(toMealPlanResponse) });
   } catch (err) {
-    res.status(500).send("Error retrieving meal plans. Error: " + err);
+    sendInternalError(res, "getMyMealPlans failed:", err);
   }
 }
 
@@ -132,7 +133,11 @@ export async function createMealPlan(req: Request, res: Response) {
   } catch (err: any) {
     const message = String(err?.message || err);
     const isValidationError = message.includes("meal plan");
-    res.status(isValidationError ? 400 : 500).send(message);
+    if (isValidationError) {
+      res.status(400).json({ error: message });
+      return;
+    }
+    sendInternalError(res, "createMealPlan failed:", err);
   }
 }
 
@@ -160,7 +165,7 @@ export async function getMealPlanById(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: toMealPlanResponse(mealPlan) });
   } catch (err) {
-    res.status(500).send("Error retrieving meal plan. Error: " + err);
+    sendInternalError(res, "getMealPlanById failed:", err);
   }
 }
 
@@ -196,7 +201,11 @@ export async function updateMealPlan(req: Request, res: Response) {
   } catch (err: any) {
     const message = String(err?.message || err);
     const isValidationError = message.includes("meal plan");
-    res.status(isValidationError ? 400 : 500).send(message);
+    if (isValidationError) {
+      res.status(400).json({ error: message });
+      return;
+    }
+    sendInternalError(res, "updateMealPlan failed:", err);
   }
 }
 
@@ -224,6 +233,6 @@ export async function deleteMealPlan(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: { id: mealPlanId } });
   } catch (err) {
-    res.status(500).send("Error deleting meal plan. Error: " + err);
+    sendInternalError(res, "deleteMealPlan failed:", err);
   }
 }

@@ -5,6 +5,9 @@ import { connect } from "../repository/database";
 import { profileModel } from "../models/profileModel";
 import { userModel } from "../models/userModel";
 import { recipeModel } from "../models/recipeModel";
+import { validationMessage } from "../validation/commonValidation";
+import { type ProfileUpdateInput, validateProfileUpdate } from "../validation/profileValidation";
+import { sendInternalError } from "../util/httpResponses";
 
 function getAuthUser(req: Request): { id: string; username?: string } | null {
   const user = (req as any).user as { id?: string; username?: string } | undefined;
@@ -19,67 +22,8 @@ function isValidObjectId(value: string): boolean {
   return Types.ObjectId.isValid(value);
 }
 
-function isValidUrl(value: unknown): boolean {
-  if (typeof value !== "string") return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
 function profileSelect() {
   return "user username bio avatarUrl followers following createdAt updatedAt";
-}
-
-const USERNAME_MAX_LENGTH = 100;
-const BIO_MAX_LENGTH = 300;
-const AVATAR_URL_MAX_LENGTH = 500;
-const EMAIL_MAX_LENGTH = 255;
-
-function sanitizeProfileUpdate(body: any): { username?: string; bio?: string; avatarUrl?: string; email?: string } {
-  const update: { username?: string; bio?: string; avatarUrl?: string; email?: string } = {};
-
-  if (body.username !== undefined) {
-    if (typeof body.username !== "string" || body.username.trim().length < 2) {
-      throw new Error("username must be at least 2 characters");
-    }
-    if (body.username.trim().length > USERNAME_MAX_LENGTH) {
-      throw new Error(`username must be at most ${USERNAME_MAX_LENGTH} characters`);
-    }
-    update.username = body.username.trim();
-  }
-
-  if (body.bio !== undefined) {
-    if (typeof body.bio !== "string") throw new Error("bio must be a string");
-    if (body.bio.length > BIO_MAX_LENGTH) throw new Error(`bio must be at most ${BIO_MAX_LENGTH} characters`);
-    update.bio = body.bio.trim();
-  }
-
-  if (body.avatarUrl !== undefined) {
-    if (String(body.avatarUrl ?? "").length > AVATAR_URL_MAX_LENGTH) {
-      throw new Error(`avatarUrl must be at most ${AVATAR_URL_MAX_LENGTH} characters`);
-    }
-    if (body.avatarUrl && !isValidUrl(body.avatarUrl)) {
-      throw new Error("avatarUrl must be a valid http/https URL");
-    }
-    update.avatarUrl = String(body.avatarUrl ?? "").trim();
-  }
-
-  if (body.email !== undefined) {
-    const email = String(body.email || "").trim().toLowerCase();
-    if (email.length > EMAIL_MAX_LENGTH) {
-      throw new Error(`email must be at most ${EMAIL_MAX_LENGTH} characters`);
-    }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      throw new Error("email must be a valid email address");
-    }
-    update.email = email;
-  }
-
-  return update;
 }
 
 async function ensureProfileForUser(userId: string, username?: string) {
@@ -108,7 +52,7 @@ export async function getMyProfile(req: Request, res: Response) {
     const profile = await ensureProfileForUser(authUser.id, authUser.username);
     res.status(200).json({ error: null, data: profile });
   } catch (err) {
-    res.status(500).send("Error retrieving my profile. Error: " + err);
+    sendInternalError(res, "getMyProfile failed:", err);
   }
 }
 
@@ -122,7 +66,13 @@ export async function updateMyProfile(req: Request, res: Response) {
       return;
     }
 
-    const update = sanitizeProfileUpdate(req.body);
+    const { error, value } = validateProfileUpdate(req.body);
+    if (error) {
+      res.status(400).json({ error: validationMessage(error) });
+      return;
+    }
+
+    const update = value as ProfileUpdateInput;
 
     const profile = await ensureProfileForUser(authUser.id, authUser.username);
     if (!profile) {
@@ -153,10 +103,7 @@ export async function updateMyProfile(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: updatedProfile });
   } catch (err: any) {
-    const message = String(err?.message || err);
-    const isValidationError =
-      message.includes("username") || message.includes("bio") || message.includes("avatarUrl") || message.includes("email");
-    res.status(isValidationError ? 400 : 500).send(message);
+    sendInternalError(res, "updateMyProfile failed:", err);
   }
 }
 
@@ -196,7 +143,11 @@ export async function uploadMyAvatar(req: Request, res: Response) {
     res.status(200).json({ error: null, data: updatedProfile });
   } catch (err: any) {
     const message = String(err?.message || err);
-    res.status(message.includes("Avatar") ? 400 : 500).send(message);
+    if (message.includes("Avatar")) {
+      res.status(400).json({ error: message });
+      return;
+    }
+    sendInternalError(res, "uploadMyAvatar failed:", err);
   }
 }
 
@@ -219,7 +170,7 @@ export async function getProfileByUserId(req: Request, res: Response) {
     const profile = await ensureProfileForUser(userId, user.username);
     res.status(200).json({ error: null, data: profile });
   } catch (err) {
-    res.status(500).send("Error retrieving profile. Error: " + err);
+    sendInternalError(res, "getProfileByUserId failed:", err);
   }
 }
 
@@ -274,7 +225,7 @@ export async function followUserProfile(req: Request, res: Response) {
     const updatedMine = await profileModel.findOne({ user: authUser.id }).select(profileSelect());
     res.status(200).json({ error: null, data: updatedMine });
   } catch (err) {
-    res.status(500).send("Error following profile. Error: " + err);
+    sendInternalError(res, "followUserProfile failed:", err);
   }
 }
 
@@ -314,7 +265,7 @@ export async function unfollowUserProfile(req: Request, res: Response) {
     const updatedMine = await profileModel.findOne({ user: authUser.id }).select(profileSelect());
     res.status(200).json({ error: null, data: updatedMine });
   } catch (err) {
-    res.status(500).send("Error unfollowing profile. Error: " + err);
+    sendInternalError(res, "unfollowUserProfile failed:", err);
   }
 }
 
@@ -340,7 +291,7 @@ export async function getProfileFollowers(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: followers });
   } catch (err) {
-    res.status(500).send("Error retrieving followers. Error: " + err);
+    sendInternalError(res, "getProfileFollowers failed:", err);
   }
 }
 
@@ -366,7 +317,7 @@ export async function getProfileFollowing(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: following });
   } catch (err) {
-    res.status(500).send("Error retrieving following profiles. Error: " + err);
+    sendInternalError(res, "getProfileFollowing failed:", err);
   }
 }
 
@@ -390,7 +341,7 @@ export async function getMySavedRecipes(req: Request, res: Response) {
     const recipes = await recipeModel.find({ _id: { $in: favorites } }).sort({ createdAt: -1 });
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
-    res.status(500).send("Error retrieving saved recipes. Error: " + err);
+    sendInternalError(res, "getMySavedRecipes failed:", err);
   }
 }
 
@@ -414,7 +365,7 @@ export async function getSavedRecipesByUserId(req: Request, res: Response) {
     const recipes = await recipeModel.find({ _id: { $in: favorites } }).sort({ createdAt: -1 });
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
-    res.status(500).send("Error retrieving saved recipes. Error: " + err);
+    sendInternalError(res, "getSavedRecipesByUserId failed:", err);
   }
 }
 
@@ -434,6 +385,6 @@ export async function getRecipesByUserId(req: Request, res: Response) {
       .populate("owner", "username bio avatarUrl");
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
-    res.status(500).send("Error retrieving user recipes. Error: " + err);
+    sendInternalError(res, "getRecipesByUserId failed:", err);
   }
 }

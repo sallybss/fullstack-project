@@ -127,54 +127,40 @@
       </div>
     </main>
 
-    <div
+    <PeopleModal
       v-if="peopleModal"
-      class="people-modal-overlay"
-      @click.self="closePeopleModal"
-    >
-      <div class="people-modal">
-        <div class="people-modal__head">
-          <h2>{{ peopleModal === 'followers' ? 'Followers' : 'Following' }}</h2>
-          <button class="people-modal__close" type="button" @click="closePeopleModal">×</button>
-        </div>
-
-        <p
-          v-if="(peopleModal === 'followers' ? followers : following).length === 0"
-          class="list-empty"
-        >
-          {{ peopleModal === 'followers' ? 'No followers yet.' : 'Not following anyone yet.' }}
-        </p>
-
-        <div v-else class="people-list">
-          <button
-            v-for="person in (peopleModal === 'followers' ? followers : following)"
-            :key="person._id"
-            class="people-row"
-            type="button"
-            @click="router.push({ name: 'profile', params: { id: person._id } }); closePeopleModal();"
-          >
-            {{ person.username }}
-          </button>
-        </div>
-      </div>
-    </div>
+      :type="peopleModal"
+      :people="peopleModal === 'followers' ? followers : following"
+      @close="closePeopleModal"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
 import RecipeCard from "../../components/recipes/RecipeCard.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import PaginationBar from "../../components/common/PaginationBar.vue";
+import PeopleModal from "../../components/profile/PeopleModal.vue";
 import { usePagination } from "../../composables/usePagination";
+import { useResponsivePageSize } from "../../composables/useResponsivePageSize";
 
 import type { Profile } from "../../interfaces/user";
 import type { Recipe } from "../../interfaces/recipe";
 import { useRecipes } from "../../modules/useRecipes";
 import { useUser } from "../../modules/auth/useUser";
+import {
+  fetchProfile,
+  fetchProfileFollowers,
+  fetchProfileFollowing,
+  fetchProfileRecipes,
+  fetchProfileSavedRecipes,
+  updateFollowStatus,
+  type ProfilePerson,
+} from "../../services/profileService";
 
 const route = useRoute();
 const router = useRouter();
@@ -188,22 +174,17 @@ const pageError = ref("");
 const profileData = ref<Profile | null>(null);
 const userRecipes = ref<Recipe[]>([]);
 const savedRecipes = ref<Recipe[]>([]);
-const followers = ref<Array<{ _id: string; username: string }>>([]);
-const following = ref<Array<{ _id: string; username: string }>>([]);
+const followers = ref<ProfilePerson[]>([]);
+const following = ref<ProfilePerson[]>([]);
 const activeSection = ref<"posts" | "saved">("posts");
 const peopleModal = ref<"followers" | "following" | null>(null);
 
 const profileId = computed(() => String(route.params.id || ""));
-const viewportWidth = ref(typeof window === "undefined" ? 1200 : window.innerWidth);
-const pageSize = computed(() => {
-  if (viewportWidth.value <= 520) return 4;
-  if (viewportWidth.value <= 900) return 6;
-  if (viewportWidth.value <= 1100) return 9;
-  return 12;
-});
-const handleResize = () => {
-  viewportWidth.value = window.innerWidth;
-};
+const { pageSize } = useResponsivePageSize([
+  { maxWidth: 520, pageSize: 4 },
+  { maxWidth: 900, pageSize: 6 },
+  { maxWidth: 1100, pageSize: 9 },
+], 12);
 const {
   page: postsPage,
   totalItems: totalPosts,
@@ -270,7 +251,6 @@ const canAdminDeleteRecipes = computed(() => {
 });
 
 onMounted(async () => {
-  window.addEventListener("resize", handleResize);
   try {
     loadingProfile.value = true;
     pageError.value = "";
@@ -280,58 +260,30 @@ onMounted(async () => {
       fetchRecipes(),
     ]);
 
-    const [profileResponse, recipesResponse, savedResponse, followersResponse, followingResponse] = await Promise.all([
-      fetch(`${API_URL}/api/profiles/${profileId.value}`),
-      fetch(`${API_URL}/api/profiles/${profileId.value}/recipes`),
-      fetch(`${API_URL}/api/profiles/${profileId.value}/saved`),
-      fetch(`${API_URL}/api/profiles/${profileId.value}/followers`),
-      fetch(`${API_URL}/api/profiles/${profileId.value}/following`),
-    ]);
-
-    if (!profileResponse.ok) {
-      throw new Error((await profileResponse.text()) || "Failed to fetch profile");
-    }
-    if (!recipesResponse.ok) {
-      throw new Error((await recipesResponse.text()) || "Failed to fetch user recipes");
-    }
-    if (!savedResponse.ok) {
-      throw new Error((await savedResponse.text()) || "Failed to fetch saved recipes");
-    }
-    if (!followersResponse.ok) {
-      throw new Error((await followersResponse.text()) || "Failed to fetch followers");
-    }
-    if (!followingResponse.ok) {
-      throw new Error((await followingResponse.text()) || "Failed to fetch following");
-    }
-
     const [profilePayload, recipesPayload, savedPayload, followersPayload, followingPayload] = await Promise.all([
-      profileResponse.json(),
-      recipesResponse.json(),
-      savedResponse.json(),
-      followersResponse.json(),
-      followingResponse.json(),
+      fetchProfile(profileId.value),
+      fetchProfileRecipes(profileId.value),
+      fetchProfileSavedRecipes(profileId.value),
+      fetchProfileFollowers(profileId.value),
+      fetchProfileFollowing(profileId.value),
     ]);
 
-    profileData.value = profilePayload.data;
-    userRecipes.value = (recipesPayload.data ?? []).map((recipe: Recipe) => ({
+    profileData.value = profilePayload;
+    userRecipes.value = (recipesPayload ?? []).map((recipe: Recipe) => ({
       ...recipe,
       saved: recipes.value.find((item) => item._id === recipe._id)?.saved ?? false,
     }));
-    savedRecipes.value = (savedPayload.data ?? []).map((recipe: Recipe) => ({
+    savedRecipes.value = (savedPayload ?? []).map((recipe: Recipe) => ({
       ...recipe,
       saved: recipes.value.find((item) => item._id === recipe._id)?.saved ?? true,
     }));
-    followers.value = followersPayload.data ?? [];
-    following.value = followingPayload.data ?? [];
+    followers.value = followersPayload ?? [];
+    following.value = followingPayload ?? [];
   } catch (err) {
     pageError.value = (err as Error).message || "Failed to load profile";
   } finally {
     loadingProfile.value = false;
   }
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener("resize", handleResize);
 });
 
 function goBack() {
@@ -355,16 +307,7 @@ async function toggleFollow() {
 
   try {
     const wasFollowing = isFollowing.value;
-    const response = await fetch(`${API_URL}/api/profiles/${profileData.value.user}/follow`, {
-      method: wasFollowing ? "DELETE" : "POST",
-      headers: {
-        "auth-token": localStorage.getItem("lsToken") || "",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error((await response.text()) || "Failed to update follow status");
-    }
+    await updateFollowStatus(profileData.value.user, wasFollowing, localStorage.getItem("lsToken") || "");
 
     await fetchCurrentUser();
 
@@ -564,63 +507,6 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   display: flex;
   justify-content: center;
   margin-top: 18px;
-}
-
-.people-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  display: grid;
-  place-items: center;
-  z-index: 30;
-}
-
-.people-modal {
-  width: min(460px, 92vw);
-  max-height: min(70vh, 640px);
-  overflow: auto;
-  background: white;
-  border-radius: 24px;
-  padding: 20px;
-}
-
-.people-modal__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.people-modal__head h2 {
-  margin: 0;
-}
-
-.people-modal__close {
-  border: 0;
-  background: transparent;
-  font-size: 26px;
-  cursor: pointer;
-}
-
-.people-list {
-  margin-top: 16px;
-  display: grid;
-  gap: 10px;
-}
-
-.people-row {
-  border: 1px solid #ececec;
-  background: #fafafa;
-  border-radius: 16px;
-  padding: 14px 16px;
-  text-align: left;
-  cursor: pointer;
-}
-
-@media (max-width: 1100px) {
-  .grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 
 @media (max-width: 1100px) {

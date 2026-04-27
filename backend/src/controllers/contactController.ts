@@ -1,6 +1,7 @@
 import { type Request, type Response } from "express";
 import Joi from "joi";
 import nodemailer from "nodemailer";
+import { validateOptions } from "../validation/commonValidation";
 
 const contactSchema = Joi.object({
   name: Joi.string().trim().min(2).max(100).required(),
@@ -27,7 +28,7 @@ function getTransporter() {
 
 export async function submitContactMessage(req: Request, res: Response) {
   try {
-    const { error, value } = contactSchema.validate(req.body);
+    const { error, value } = contactSchema.validate(req.body, validateOptions);
     if (error) {
       return res.status(400).json({ error: error.details[0]?.message || "Invalid contact form data" });
     }
@@ -36,7 +37,8 @@ export async function submitContactMessage(req: Request, res: Response) {
     const appPassword = process.env.CONTACT_EMAIL_APP_PASSWORD;
 
     if (!recipient || !appPassword) {
-      return res.status(500).json({ error: "Contact email is not configured on the server." });
+      console.error("submitContactMessage failed: contact email credentials are not configured.");
+      return res.status(500).json({ error: "Something went wrong. Please try again later." });
     }
 
     await getTransporter().sendMail({

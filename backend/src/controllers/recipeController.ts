@@ -3,121 +3,14 @@ import { Types } from "mongoose";
 import { recipeModel } from "../models/recipeModel";
 import { userModel } from "../models/userModel";
 import { connect } from "../repository/database";
-
-function isValidUrl(value: unknown): boolean {
-  if (typeof value !== "string") return false;
-  try {
-    const url = new URL(value);
-    return url.protocol === "http:" || url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-const RECIPE_TITLE_MAX_LENGTH = 100;
-const RECIPE_DESCRIPTION_MAX_LENGTH = 500;
-const RECIPE_IMAGE_URL_MAX_LENGTH = 500;
-const RECIPE_CUISINE_MAX_LENGTH = 40;
-const RECIPE_INGREDIENT_MAX_LENGTH = 200;
-const RECIPE_STEP_MAX_LENGTH = 2000;
-
-function pickRecipeBody(body: any) {
-  const recipe: any = {};
-
-  const parseStringArray = (value: unknown): string[] | undefined => {
-    if (Array.isArray(value)) return value.map((v) => String(v).trim());
-    if (typeof value !== "string") return undefined;
-    const trimmed = value.trim();
-    if (!trimmed) return [];
-    if (trimmed.startsWith("[")) {
-      try {
-        const parsed = JSON.parse(trimmed);
-        if (Array.isArray(parsed)) return parsed.map((v) => String(v).trim());
-      } catch {
-      }
-    }
-    return trimmed.split(",").map((v) => v.trim()).filter(Boolean);
-  };
-
-  if (typeof body.title === "string") {
-    const title = body.title.trim();
-    if (!title) throw new Error("title is required");
-    if (title.length > RECIPE_TITLE_MAX_LENGTH) {
-      throw new Error(`title must be at most ${RECIPE_TITLE_MAX_LENGTH} characters`);
-    }
-    recipe.title = title;
-  }
-  if (typeof body.description === "string") {
-    const description = body.description.trim();
-    if (!description) throw new Error("description is required");
-    if (description.length > RECIPE_DESCRIPTION_MAX_LENGTH) {
-      throw new Error(`description must be at most ${RECIPE_DESCRIPTION_MAX_LENGTH} characters`);
-    }
-    recipe.description = description;
-  }
-  const ingredients = parseStringArray(body.ingredients);
-  if (ingredients) {
-    if (ingredients.some((entry) => !entry)) throw new Error("ingredients cannot contain empty values");
-    if (ingredients.some((entry) => entry.length > RECIPE_INGREDIENT_MAX_LENGTH)) {
-      throw new Error(`ingredient items must be at most ${RECIPE_INGREDIENT_MAX_LENGTH} characters`);
-    }
-    recipe.ingredients = ingredients;
-  }
-  const instructions = parseStringArray(body.instructions);
-  if (instructions) {
-    if (instructions.some((entry) => !entry)) throw new Error("instructions cannot contain empty values");
-    if (instructions.some((entry) => entry.length > RECIPE_STEP_MAX_LENGTH)) {
-      throw new Error(`instruction steps must be at most ${RECIPE_STEP_MAX_LENGTH} characters`);
-    }
-    recipe.instructions = instructions;
-  }
-  if (typeof body.cuisine === "string") {
-    const cuisine = body.cuisine.trim();
-    if (!cuisine) throw new Error("cuisine is required");
-    if (cuisine.length > RECIPE_CUISINE_MAX_LENGTH) {
-      throw new Error(`cuisine must be at most ${RECIPE_CUISINE_MAX_LENGTH} characters`);
-    }
-    recipe.cuisine = cuisine;
-  }
-  if (typeof body.isPublic === "boolean") recipe.isPublic = body.isPublic;
-
-  if (body.imageUrl !== undefined) {
-    const image = String(body.imageUrl ?? "").trim();
-    if (image.length > RECIPE_IMAGE_URL_MAX_LENGTH) {
-      throw new Error(`imageUrl must be at most ${RECIPE_IMAGE_URL_MAX_LENGTH} characters`);
-    }
-    if (image && !isValidUrl(image)) {
-      throw new Error("imageUrl must be a valid http/https URL");
-    }
-    recipe.imageUrl = image;
-  }
-
-  if (body.prepTimeMinutes !== undefined) {
-    const prep = Number(body.prepTimeMinutes);
-    if (!Number.isFinite(prep) || prep < 0) {
-      throw new Error("prepTimeMinutes must be a positive number");
-    }
-    recipe.prepTimeMinutes = prep;
-  }
-
-  if (body.cookTimeMinutes !== undefined) {
-    const cook = Number(body.cookTimeMinutes);
-    if (!Number.isFinite(cook) || cook < 0) {
-      throw new Error("cookTimeMinutes must be a positive number");
-    }
-    recipe.cookTimeMinutes = cook;
-  }
-
-  if (body.servings !== undefined) {
-    const servings = Number(body.servings);
-    if (!Number.isFinite(servings) || servings < 1) {
-      throw new Error("servings must be a number greater than or equal to 1");
-    }
-    recipe.servings = servings;
-  }
-
-  return recipe;
-}
+import {
+  validateCreateRecipe,
+  validateRecipeComment,
+  validateRecipeRating,
+  validateUpdateRecipe,
+} from "../validation/recipeValidation";
+import { validationMessage } from "../validation/commonValidation";
+import { sendInternalError } from "../util/httpResponses";
 
 function getAuthUser(req: Request): { id: string; username?: string; role?: string } | null {
   const user = (req as any).user as { id?: string; username?: string; role?: string } | undefined;
@@ -134,18 +27,15 @@ function getAuthUserId(req: Request): string | null {
 }
 
 function getCommentText(body: any): string {
-  const text = typeof body?.text === "string" ? body.text.trim() : "";
-  if (!text) throw new Error("Comment text is required");
-  if (text.length > 500) throw new Error("Comment text must be at most 500 characters");
-  return text;
+  const { error, value } = validateRecipeComment(body);
+  if (error) throw new Error(validationMessage(error));
+  return value.text;
 }
 
 function getRatingValue(body: any): number {
-  const value = Number(body?.value);
-  if (!Number.isInteger(value) || value < 1 || value > 5) {
-    throw new Error("Rating value must be an integer between 1 and 5");
-  }
-  return value;
+  const { error, value } = validateRecipeRating(body);
+  if (error) throw new Error(validationMessage(error));
+  return value.value;
 }
 
 function withRatingSummary(recipe: any) {
@@ -178,7 +68,13 @@ export async function createRecipe(req: Request, res: Response): Promise<void> {
   try {
     await connect();
 
-    const data = pickRecipeBody(req.body);
+    const { error, value } = validateCreateRecipe(req.body);
+    if (error) {
+      res.status(400).json({ error: validationMessage(error) });
+      return;
+    }
+
+    const data = value;
     if (req.file?.filename) {
       data.imageUrl = `/uploads/recipes/${req.file.filename}`;
     }
@@ -194,18 +90,7 @@ export async function createRecipe(req: Request, res: Response): Promise<void> {
 
     res.status(201).send(result);
   } catch (err: any) {
-    const msg = String(err?.message || err);
-    const isValidationError =
-      msg.includes("title") ||
-      msg.includes("description") ||
-      msg.includes("ingredient") ||
-      msg.includes("instruction") ||
-      msg.includes("cuisine") ||
-      msg.includes("imageUrl") ||
-      msg.includes("prepTimeMinutes") ||
-      msg.includes("cookTimeMinutes") ||
-      msg.includes("servings");
-    res.status(isValidationError ? 400 : 500).send(msg);
+    sendInternalError(res, "createRecipe failed:", err);
   }
 }
 
@@ -233,7 +118,7 @@ export async function getAllRecipes(req: Request, res: Response) {
       .populate("owner", "username bio avatarUrl");
     res.status(200).send(result.map((r: any) => withRatingSummary(r.toObject())));
   } catch (err) {
-    res.status(500).send("Error retrieving recipes. Error: " + err);
+    sendInternalError(res, "getAllRecipes failed:", err);
   }
 }
 
@@ -251,7 +136,7 @@ export async function getRecipeById(req: Request, res: Response) {
 
     res.status(200).send(withRatingSummary(result.toObject()));
   } catch (err) {
-    res.status(500).send("Error retrieving recipe by id. Error: " + err);
+    sendInternalError(res, "getRecipeById failed:", err);
   }
 }
 
@@ -268,7 +153,7 @@ export async function getRecipesByQuery(req: Request, res: Response) {
 
     res.status(200).send(result.map((r: any) => withRatingSummary(r.toObject())));
   } catch (err) {
-    res.status(500).send("Error retrieving recipes. Error: " + err);
+    sendInternalError(res, "getRecipesByQuery failed:", err);
   }
 }
 
@@ -291,7 +176,7 @@ export async function getRecipeComments(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: recipe.comments || [] });
   } catch (err) {
-    res.status(500).send("Error retrieving recipe comments. Error: " + err);
+    sendInternalError(res, "getRecipeComments failed:", err);
   }
 }
 
@@ -335,7 +220,7 @@ export async function addRecipeComment(req: Request, res: Response) {
     res.status(201).json({ error: null, data: createdComment });
   } catch (err: any) {
     const msg = String(err?.message || err);
-    const isValidationError = msg.includes("Comment text");
+    const isValidationError = msg.includes("text");
     res.status(isValidationError ? 400 : 500).send(msg);
   }
 }
@@ -384,7 +269,7 @@ export async function deleteRecipeComment(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: { commentId } });
   } catch (err) {
-    res.status(500).send("Error deleting recipe comment. Error: " + err);
+    sendInternalError(res, "deleteRecipeComment failed:", err);
   }
 }
 
@@ -432,7 +317,7 @@ export async function updateRecipeComment(req: Request, res: Response) {
     res.status(200).json({ error: null, data: comment });
   } catch (err: any) {
     const msg = String(err?.message || err);
-    const isValidationError = msg.includes("Comment text");
+    const isValidationError = msg.includes("text");
     res.status(isValidationError ? 400 : 500).send(msg);
   }
 }
@@ -443,7 +328,13 @@ export async function updateRecipeById(req: Request, res: Response) {
   try {
     await connect();
 
-    const update = pickRecipeBody(req.body);
+    const { error, value } = validateUpdateRecipe(req.body);
+    if (error) {
+      res.status(400).json({ error: validationMessage(error) });
+      return;
+    }
+
+    const update = value;
 
     if (req.file?.filename) {
       update.imageUrl = `/uploads/recipes/${req.file.filename}`;
@@ -472,18 +363,7 @@ export async function updateRecipeById(req: Request, res: Response) {
     if (!result) res.status(404).send("Cannot update recipe with id=" + id);
     else res.status(200).send(withRatingSummary(result.toObject()));
   } catch (err: any) {
-    const msg = String(err?.message || err);
-    const isValidationError =
-      msg.includes("title") ||
-      msg.includes("description") ||
-      msg.includes("ingredient") ||
-      msg.includes("instruction") ||
-      msg.includes("cuisine") ||
-      msg.includes("imageUrl") ||
-      msg.includes("prepTimeMinutes") ||
-      msg.includes("cookTimeMinutes") ||
-      msg.includes("servings");
-    res.status(isValidationError ? 400 : 500).send(msg);
+    sendInternalError(res, "updateRecipeById failed:", err);
   }
 }
 
@@ -519,7 +399,7 @@ export async function deleteRecipeById(req: Request, res: Response) {
     if (!result) res.status(404).send("Cannot delete recipe with id=" + id);
     else res.status(200).send("Recipe was successfully deleted.");
   } catch (err) {
-    res.status(500).send("Error deleting recipe by id. Error: " + err);
+    sendInternalError(res, "deleteRecipeById failed:", err);
   }
 }
 
@@ -545,7 +425,7 @@ export async function getFavoriteRecipeIds(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
-    res.status(500).send("Error retrieving favorite recipes. Error: " + err);
+    sendInternalError(res, "getFavoriteRecipeIds failed:", err);
   }
 }
 
@@ -572,7 +452,7 @@ export async function getFavoriteRecipes(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: recipes });
   } catch (err) {
-    res.status(500).send("Error retrieving favorite recipes. Error: " + err);
+    sendInternalError(res, "getFavoriteRecipes failed:", err);
   }
 }
 
@@ -609,7 +489,7 @@ export async function addFavoriteRecipe(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
-    res.status(500).send("Error adding favorite recipe. Error: " + err);
+    sendInternalError(res, "addFavoriteRecipe failed:", err);
   }
 }
 
@@ -640,7 +520,7 @@ export async function removeFavoriteRecipe(req: Request, res: Response) {
 
     res.status(200).json({ error: null, data: favorites });
   } catch (err) {
-    res.status(500).send("Error removing favorite recipe. Error: " + err);
+    sendInternalError(res, "removeFavoriteRecipe failed:", err);
   }
 }
 
@@ -681,10 +561,10 @@ export async function rateRecipe(req: Request, res: Response) {
     res.status(200).json({ error: null, data: payload.ratingSummary });
   } catch (err: any) {
     const msg = String(err?.message || err);
-    if (msg.includes("Rating value")) {
+    if (msg.includes("value")) {
       res.status(400).json({ error: msg });
       return;
     }
-    res.status(500).send("Error rating recipe. Error: " + err);
+    sendInternalError(res, "rateRecipe failed:", err);
   }
 }
