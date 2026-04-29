@@ -4,7 +4,7 @@
 
     <main class="container">
       <div class="profile-card">
-        <button class="back" type="button" @click="goBack">← Go back</button>
+        <button class="back" type="button" @click="goBack">Go back</button>
 
         <div v-if="loadingProfile" class="empty-state">
           <h2>Loading profile...</h2>
@@ -16,113 +16,33 @@
         </div>
 
         <template v-else>
-          <div class="profile-top">
-            <div class="left">
-              <div class="avatar">
-                <img v-if="avatarSrc" :src="avatarSrc" alt="Profile avatar" class="avatarImage" />
-                <span v-else>{{ ownerInitial }}</span>
-              </div>
+          <PublicProfileHeader
+            :username="profileData?.username || 'Unknown'"
+            :bio="profileData?.bio || 'This user has not added a bio yet.'"
+            :avatar-src="avatarSrc"
+            :owner-initial="ownerInitial"
+            :recipe-count="userRecipes.length"
+            :saved-count="savedRecipes.length"
+            :follower-count="followers.length"
+            :following-count="following.length"
+            :can-follow="canFollow"
+            :is-following="isFollowing"
+            @follow="toggleFollow"
+            @open-people="openPeopleModal"
+          />
 
-              <div class="meta">
-                <h1 class="name">{{ profileData?.username || "Unknown" }}</h1>
-                <p class="sub">
-                  Member profile · <b>{{ userRecipes.length }}</b> recipes posted
-                </p>
-              </div>
-            </div>
-
-            <div class="right">
-              <BaseButton
-                v-if="canFollow"
-                :variant="isFollowing ? 'outline' : 'primary'"
-                type="button"
-                @click="toggleFollow"
-              >
-                {{ isFollowing ? "Following" : "Follow" }}
-              </BaseButton>
-
-              <button class="stat stat--button" type="button" @click="openPeopleModal('followers')">
-                <i class="pi pi-users"></i>
-                <span><b>{{ followers.length }}</b> followers</span>
-              </button>
-
-              <button class="stat stat--button" type="button" @click="openPeopleModal('following')">
-                <i class="pi pi-share-alt"></i>
-                <span><b>{{ following.length }}</b> following</span>
-              </button>
-
-              <div class="stat">
-                <i class="pi pi-book"></i>
-                <span><b>{{ userRecipes.length }}</b> recipes</span>
-              </div>
-
-              <div class="stat">
-                <i class="pi pi-bookmark"></i>
-                <span><b>{{ savedRecipes.length }}</b> saved</span>
-              </div>
-            </div>
-          </div>
-
-          <p class="bio">
-            {{ profileData?.bio || "This user has not added a bio yet." }}
-          </p>
-
-          <section class="section">
-            <div class="content-tabs">
-              <button
-                class="content-tab"
-                :class="{ 'content-tab--active': activeSection === 'posts' }"
-                type="button"
-                @click="activeSection = 'posts'"
-              >
-                Posts
-              </button>
-              <button
-                class="content-tab"
-                :class="{ 'content-tab--active': activeSection === 'saved' }"
-                type="button"
-                @click="activeSection = 'saved'"
-              >
-                Saved
-              </button>
-            </div>
-
-            <div
-              v-if="activeSection === 'posts' && pagedRecipes.length === 0"
-              class="empty-state"
-            >
-              <h2>No recipes yet</h2>
-              <p>This user has not published any recipes yet.</p>
-            </div>
-
-            <div
-              v-else-if="activeSection === 'saved' && pagedSavedRecipes.length === 0"
-              class="empty-state"
-            >
-              <h2>No saved recipes yet</h2>
-              <p>This user has not saved any recipes yet.</p>
-            </div>
-
-            <div v-else class="grid">
-              <RecipeCard
-                v-for="r in activeSection === 'posts' ? pagedRecipes : pagedSavedRecipes"
-                :key="r._id"
-                :recipe="r"
-                :show-delete="canAdminDeleteRecipes"
-                :onAuthRequired="goToSignIn"
-                :onSaveClick="handleToggleSave"
-                :onDelete="handleAdminDeleteRecipe"
-              />
-            </div>
-
-            <div class="pager" v-if="activeTotal > pageSize">
-              <PaginationBar
-                v-model:page="activePage"
-                :pageSize="pageSize"
-                :total="activeTotal"
-              />
-            </div>
-          </section>
+          <ProfileRecipeSections
+            v-model:active-section="activeSection"
+            v-model:active-page="activePage"
+            :page-size="pageSize"
+            :active-total="activeTotal"
+            :paged-recipes="pagedRecipes"
+            :paged-saved-recipes="pagedSavedRecipes"
+            :can-admin-delete-recipes="canAdminDeleteRecipes"
+            @auth-required="goToSignIn"
+            @toggle-save="handleToggleSave"
+            @delete-recipe="handleAdminDeleteRecipe"
+          />
         </template>
       </div>
     </main>
@@ -141,10 +61,9 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
 import HeroSection from "../../components/common/HeroSection.vue";
-import RecipeCard from "../../components/recipes/RecipeCard.vue";
-import BaseButton from "../../components/common/BaseButton.vue";
-import PaginationBar from "../../components/common/PaginationBar.vue";
 import PeopleModal from "../../components/profile/PeopleModal.vue";
+import ProfileRecipeSections from "../../components/profile/ProfileRecipeSections.vue";
+import PublicProfileHeader from "../../components/profile/PublicProfileHeader.vue";
 import { usePagination } from "../../composables/usePagination";
 import { useResponsivePageSize } from "../../composables/useResponsivePageSize";
 
@@ -376,156 +295,6 @@ async function handleAdminDeleteRecipe(recipeId: string) {
   font-size: 14px;
 }
 
-.profile-top {
-  margin-top: 10px;
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: center;
-}
-
-.left {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-}
-
-.avatar {
-  width: 54px;
-  height: 54px;
-  aspect-ratio: 1 / 1;
-  flex: 0 0 54px;
-  border-radius: 50%;
-  background: #f1f1f6;
-  display: grid;
-  place-items: center;
-  font-weight: 800;
-  color: #333;
-  overflow: hidden;
-}
-
-.avatarImage {
-  width: 100%;
-  height: 100%;
-  border-radius: 50%;
-  object-fit: cover;
-  display: block;
-}
-
-.meta {
-  display: grid;
-  gap: 4px;
-}
-
-.name {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.sub {
-  margin: 0;
-  color: #888;
-  font-size: 13px;
-}
-
-.right {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: nowrap;
-  justify-content: flex-end;
-  flex-shrink: 0;
-}
-
-.stat {
-  display: inline-flex;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: #f6f6fb;
-  color: #333;
-  font-size: 13px;
-  white-space: nowrap;
-}
-
-.stat--button {
-  border: 0;
-  cursor: pointer;
-}
-
-.bio {
-  margin: 14px 0 0;
-  color: #666;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.section {
-  margin-top: 18px;
-}
-
-.content-tabs {
-  display: inline-flex;
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.content-tab {
-  border: 1px solid rgba(255, 114, 76, 0.24);
-  background: white;
-  color: #555;
-  border-radius: 999px;
-  padding: 10px 16px;
-  cursor: pointer;
-}
-
-.content-tab--active {
-  background: #ff724c;
-  border-color: #ff724c;
-  color: white;
-}
-
-.list-empty {
-  color: #888;
-  margin: 12px 0 0;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  align-items: start;
-}
-
-.grid > * {
-  min-width: 0;
-}
-
-.pager {
-  display: flex;
-  justify-content: center;
-  margin-top: 18px;
-}
-
-@media (max-width: 1100px) {
-  .profile-top {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .right {
-    width: 100%;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-  }
-
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 520px) {
   .container {
     margin-top: -126px;
@@ -539,89 +308,6 @@ async function handleAdminDeleteRecipe(recipeId: string) {
 
   .back {
     font-size: 13px;
-  }
-
-  .profile-top {
-    gap: 14px;
-    margin-top: 14px;
-  }
-
-  .left {
-    width: 100%;
-    align-items: center;
-    gap: 12px;
-  }
-
-  .avatar {
-    width: 58px;
-    height: 58px;
-    flex-basis: 58px;
-  }
-
-  .meta {
-    min-width: 0;
-    gap: 6px;
-  }
-
-  .name {
-    font-size: 20px;
-    line-height: 1.05;
-  }
-
-  .sub {
-    font-size: 12px;
-    line-height: 1.45;
-  }
-
-  .right {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-    width: 100%;
-  }
-
-  .right > * {
-    min-width: 0;
-  }
-
-  .right :deep(.baseButton),
-  .right :deep(button.baseButton) {
-    width: 100%;
-  }
-
-  .stat {
-    justify-content: center;
-    padding: 12px 10px;
-    text-align: center;
-    white-space: normal;
-    line-height: 1.35;
-  }
-
-  .bio {
-    margin-top: 16px;
-    font-size: 15px;
-    line-height: 1.6;
-  }
-
-  .section {
-    margin-top: 20px;
-  }
-
-  .content-tabs {
-    width: 100%;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  .content-tab {
-    width: 100%;
-    text-align: center;
-  }
-
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px 10px;
   }
 
   :deep(.hero .coverEditor) {

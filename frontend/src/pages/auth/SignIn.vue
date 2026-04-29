@@ -29,7 +29,7 @@
             v-model="password"
             class="auth__input"
             :type="showPassword ? 'text' : 'password'"
-            placeholder="••••••••"
+            placeholder="********"
             autocomplete="current-password"
             required
             maxlength="72"
@@ -64,46 +64,13 @@
       </form>
     </div>
 
-    <div
+    <ForgotPasswordModal
       v-if="showForgotPasswordModal"
-      class="authModalOverlay"
-      @click.self="closeForgotPasswordModal"
-    >
-      <div class="authModal">
-        <button
-          class="authModal__close"
-          type="button"
-          aria-label="Close"
-          @click="closeForgotPasswordModal"
-        >
-          <i class="pi pi-times"></i>
-        </button>
-
-        <h2 class="authModal__title">Reset password</h2>
-        <p class="authModal__text">Enter your email and we’ll send you a reset link.</p>
-
-        <form class="authModal__form" @submit.prevent="submitForgotPassword">
-          <label class="auth__label">
-            Email
-            <input
-              v-model="forgotPasswordEmail"
-              class="auth__input"
-              type="email"
-              placeholder="you@email.com"
-              autocomplete="email"
-              maxlength="255"
-              required
-            />
-          </label>
-
-        <p v-if="forgotError" class="auth__message auth__message--error">
-          {{ forgotError }}
-        </p>
-
-          <BaseButton type="submit" variant="primary">Send reset link</BaseButton>
-        </form>
-      </div>
-    </div>
+      v-model:email="forgotPasswordEmail"
+      :error="forgotError"
+      @close="closeForgotPasswordModal"
+      @submit="submitForgotPassword"
+    />
   </div>
 </template>
 
@@ -111,11 +78,20 @@
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import bg from "../../assets/images/auth_bg.jpg";
+import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal.vue";
 import BaseButton from "../../components/common/BaseButton.vue";
 import { useUser } from "../../modules/auth/useUser";
 
 const router = useRouter();
-const { fetchToken, requestPasswordReset, error, isLoggedIn, email, password, resetForm } = useUser();
+const {
+  fetchToken,
+  requestPasswordReset,
+  error,
+  isLoggedIn,
+  email,
+  password,
+  resetForm,
+} = useUser();
 const showPassword = ref(false);
 const showForgotPasswordModal = ref(false);
 const forgotPasswordEmail = ref("");
@@ -295,54 +271,5 @@ async function submitForgotPassword() {
   background: rgba(58, 120, 88, 0.22);
   border-color: rgba(127, 190, 155, 0.3);
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
-}
-
-.authModalOverlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  padding: 24px;
-  background: rgba(0, 0, 0, 0.62);
-}
-
-.authModal {
-  position: relative;
-  width: min(460px, 100%);
-  border-radius: 24px;
-  padding: 24px;
-  background: #16120f;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
-}
-
-.authModal__close {
-  position: absolute;
-  top: 14px;
-  right: 14px;
-  width: 38px;
-  height: 38px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  cursor: pointer;
-}
-
-.authModal__title {
-  margin: 0;
-  font-size: 1.8rem;
-  color: #fff;
-}
-
-.authModal__text {
-  margin: 10px 0 20px;
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.5;
-}
-
-.authModal__form {
-  display: grid;
-  gap: 16px;
 }
 </style>

@@ -6,7 +6,7 @@ import HeroSection from "../../components/common/HeroSection.vue";
 import ImageCropperModal from "../../components/common/ImageCropperModal.vue";
 import AvatarUploadPanel from "../../components/profile/AvatarUploadPanel.vue";
 import DeleteAccountPanel from "../../components/profile/DeleteAccountPanel.vue";
-import ForgotPasswordModal from "../../components/profile/ForgotPasswordModal.vue";
+import ForgotPasswordModal from "../../components/auth/ForgotPasswordModal.vue";
 import PasswordChangeForm from "../../components/profile/PasswordChangeForm.vue";
 import ProfileInfoForm from "../../components/profile/ProfileInfoForm.vue";
 import ProfileTabsBar from "../../components/profile/ProfileTabsBar.vue";
