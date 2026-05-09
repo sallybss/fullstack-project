@@ -16,7 +16,12 @@
         <RouterLink to="/about" class="nav__link" active-class="is-active">
           About
         </RouterLink>
-        <RouterLink to="/meal-plans" class="nav__link" active-class="is-active">
+        <RouterLink
+          to="/meal-plans"
+          class="nav__link"
+          active-class="is-active"
+          @click="handleMealPlannerClick"
+        >
           Meal Planner
         </RouterLink>
         <RouterLink to="/contact" class="nav__link" active-class="is-active">
@@ -78,7 +83,7 @@
         <RouterLink to="/about" class="mobileMenu__link" active-class="is-active" @click="closeMobileMenu">
           About
         </RouterLink>
-        <RouterLink to="/meal-plans" class="mobileMenu__link" active-class="is-active" @click="closeMobileMenu">
+        <RouterLink to="/meal-plans" class="mobileMenu__link" active-class="is-active" @click="handleMealPlannerClick">
           Meal Planner
         </RouterLink>
         <RouterLink to="/contact" class="mobileMenu__link" active-class="is-active" @click="closeMobileMenu">
@@ -129,10 +134,12 @@ import { ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import BaseButton from "../common/BaseButton.vue";
 import { useUser } from "../../modules/auth/useUser";
+import { useAuthRequiredModal } from "../../composables/useAuthRequiredModal";
 
 const router = useRouter();
 const route = useRoute();
 const { isLoggedIn, logout } = useUser();
+const { openAuthRequiredModal } = useAuthRequiredModal();
 const isMobileMenuOpen = ref(false);
 
 watch(
@@ -148,6 +155,17 @@ function toggleMobileMenu() {
 
 function closeMobileMenu() {
   isMobileMenuOpen.value = false;
+}
+
+function handleMealPlannerClick(event: MouseEvent) {
+  if (isLoggedIn.value) {
+    closeMobileMenu();
+    return;
+  }
+
+  event.preventDefault();
+  closeMobileMenu();
+  openAuthRequiredModal();
 }
 
 // Redirect guest users to auth pages

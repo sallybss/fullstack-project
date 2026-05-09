@@ -20,6 +20,7 @@ import ProfileView from "../pages/profile/ProfileView.vue";
 
 import AdminPanelView from "../pages/admin/AdminPanelView.vue";
 import { useAuthSession } from "../composables/useAuthSession";
+import { useAuthRequiredModal } from "../composables/useAuthRequiredModal";
 
 const routes = [
   { path: "/", name: "home", component: Home },
@@ -35,7 +36,7 @@ const routes = [
   { path: "/signup", name: "signup", component: SignUp, meta: { hideLayout: true } },
   { path: "/reset-password", name: "reset-password", component: ResetPassword, meta: { hideLayout: true } },
 
-  { path: "/recipes/:id", name: "recipe", component: RecipeView },
+  { path: "/recipes/:id", name: "recipe", component: RecipeView, meta: { requiresAuth: true } },
   { path: "/add-recipe", name: "add-recipe", component: AddRecipe, meta: { requiresAuth: true } },
   { path: "/edit-recipe/:id", name: "edit-recipe", component: () => import("../pages/recipes/EditRecipe.vue"), meta: { requiresAuth: true } },
 
@@ -67,10 +68,12 @@ const router = createRouter({
 
 router.beforeEach((to) => {
   const { isAuthenticated, userRole, syncAuthSessionFromStorage } = useAuthSession();
+  const { openAuthRequiredModal } = useAuthRequiredModal();
   syncAuthSessionFromStorage();
 
   if (to.meta.requiresAuth && !isAuthenticated.value) {
-    return { name: "signin" };
+    openAuthRequiredModal();
+    return false;
   }
 
   if (to.meta.requiresAdmin && userRole.value !== "admin") {

@@ -140,6 +140,11 @@ const ratingCount = computed(() => {
 });
 
 function handleViewClick() {
+  if (!isLoggedIn.value) {
+    props.onAuthRequired?.();
+    return;
+  }
+
   router.push({
     name: "recipe",
     params: { id: props.recipe._id },

@@ -66,10 +66,12 @@ function buildRecipeFormData(recipe: NewRecipe): FormData {
   formData.append("ingredients", JSON.stringify(recipe.ingredients));
   formData.append("instructions", JSON.stringify(recipe.instructions));
 
+  const imageUrl = recipe.imageUrl?.trim() ?? "";
+
   if (recipe.imageFile) {
     formData.append("photo", recipe.imageFile);
-  } else if (recipe.imageUrl) {
-    formData.append("imageUrl", recipe.imageUrl);
+  } else if (imageUrl && /^https?:\/\//i.test(imageUrl)) {
+    formData.append("imageUrl", imageUrl);
   }
 
   return formData;

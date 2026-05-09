@@ -78,9 +78,11 @@ import OtherRecipesSection from "../../components/recipes/OtherRecipesSection.vu
 import RecipeCommentsSection from "../../components/recipes/RecipeCommentsSection.vue";
 import RecipeRatingSection from "../../components/recipes/RecipeRatingSection.vue";
 import { updateFollowStatus } from "../../services/profileService";
+import { useAuthRequiredModal } from "../../composables/useAuthRequiredModal";
 
 const route = useRoute();
 const router = useRouter();
+const { openAuthRequiredModal } = useAuthRequiredModal();
 
 const {
   recipes,
@@ -189,7 +191,7 @@ function goBack() {
 }
 
 function goToSignIn() {
-  router.push("/signin");
+  openAuthRequiredModal();
 }
 
 function startEditing(comment: RecipeComment) {
